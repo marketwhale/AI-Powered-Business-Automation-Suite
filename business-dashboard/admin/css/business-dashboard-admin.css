@@ -1,0 +1,167 @@
+/*
+ * Admin-specific stylesheet for this plugin.
+ *
+ * @link       https://example.com
+ * @since      1.0.0
+ *
+ * @package    Business_Dashboard
+ * @subpackage Business_Dashboard/admin/css
+ */
+.business-dashboard-error {
+    color: #dc3232;
+    font-weight: bold;
+}
+.business-dashboard-success {
+    color: #46b450;
+    font-weight: bold;
+}
+
+/* Modern Admin Styles */
+.business-dashboard-admin-wrap {
+    display: flex;
+    margin-top: 20px;
+    background-color: #f0f0f1; /* Light gray background */
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.business-dashboard-sidebar {
+    width: 220px;
+    background-color: #23282d; /* Dark sidebar */
+    color: #e0e0e0;
+    padding: 20px 0;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+.business-dashboard-sidebar h2 {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 1.4em;
+    padding: 0 20px;
+}
+
+.business-dashboard-sidebar ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.business-dashboard-sidebar ul li a {
+    display: block;
+    padding: 12px 20px;
+    color: #e0e0e0;
+    text-decoration: none;
+    font-size: 1.1em;
+    border-left: 4px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.business-dashboard-sidebar ul li a:hover {
+    background-color: #32373c;
+    border-left-color: #0073aa;
+    color: #fff;
+}
+
+.business-dashboard-sidebar ul li a.active {
+    background-color: #0073aa;
+    border-left-color: #00a0d2;
+    color: #fff;
+    font-weight: bold;
+}
+
+.business-dashboard-content-area {
+    flex-grow: 1;
+    padding: 30px;
+    background-color: #fff;
+    border-left: 1px solid #e0e0e0;
+}
+
+.business-dashboard-content-area h1 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: #32373c;
+    font-size: 2em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+}
+
+.business-dashboard-content-area h2 {
+    color: #444;
+    margin-top: 30px;
+    margin-bottom: 20px;
+    font-size: 1.6em;
+}
+
+/* WordPress default nav-tab-wrapper for compatibility */
+.nav-tab-wrapper {
+    margin-bottom: 20px;
+    border-bottom: 1px solid #c3c4c7;
+    padding-bottom: 0;
+}
+
+.nav-tab {
+    display: inline-block;
+    padding: 10px 15px;
+    margin: 0 5px 0 0;
+    font-size: 14px;
+    line-height: 20px;
+    text-decoration: none;
+    color: #555d66;
+    border: 1px solid #c3c4c7;
+    border-bottom: none;
+    background: #f0f0f1;
+    border-radius: 4px 4px 0 0;
+    box-shadow: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.nav-tab:hover {
+    color: #0073aa;
+    background: #f8f8f8;
+}
+
+.nav-tab-active {
+    background: #fff;
+    border-bottom: 1px solid #fff;
+    color: #000;
+    box-shadow: 0px 1px 0px #fff;
+}
+
+/* Adjustments for forms within the new layout */
+.business-dashboard-admin-content form {
+    background-color: #fff;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+}
+
+.business-dashboard-admin-content form h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.business-dashboard-admin-content form table.form-table th {
+    width: 180px;
+}
+
+.business-dashboard-admin-content form input[type="text"],
+.business-dashboard-admin-content form input[type="url"],
+.business-dashboard-admin-content form select,
+.business-dashboard-admin-content form textarea {
+    width: 100%;
+    max-width: 400px;
+    padding: 8px;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+}
+
+.business-dashboard-admin-content form .submit {
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+    margin-top: 20px;
+}

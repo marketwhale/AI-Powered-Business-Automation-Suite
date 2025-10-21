@@ -1,0 +1,195 @@
+/*
+ * Public-facing stylesheet for this plugin.
+ *
+ * @link       https://example.com
+ * @since      1.0.0
+ *
+ * @package    Business_Dashboard
+ * @subpackage Business_Dashboard/public/css
+ */
+.business-dashboard-form-wrap {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #fff;
+}
+.business-dashboard-form-wrap h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+.business-dashboard-form-wrap p {
+    margin-bottom: 15px;
+}
+.business-dashboard-form-wrap label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+.business-dashboard-form-wrap input[type="text"],
+.business-dashboard-form-wrap input[type="email"],
+.business-dashboard-form-wrap input[type="password"],
+.business-dashboard-form-wrap input[type="url"],
+.business-dashboard-form-wrap textarea,
+.business-dashboard-form-wrap select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+.business-dashboard-form-wrap input[type="submit"] {
+    width: auto;
+    padding: 10px 20px;
+    background-color: #0073aa;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+.business-dashboard-form-wrap input[type="submit"]:hover {
+    background-color: #005177;
+}
+.business-dashboard-error {
+    color: #dc3232;
+    font-weight: bold;
+}
+.business-dashboard-success {
+    color: #46b450;
+    font-weight: bold;
+}
+
+/* Dashboard styles */
+.business-dashboard-wrap {
+    max-width: 1200px; /* Wider for sidebar layout */
+    margin: 20px auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #fff;
+}
+.business-dashboard-wrap h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #32373c;
+    font-size: 2.2em;
+}
+
+.business-dashboard-layout {
+    display: flex;
+    gap: 20px; /* Space between sidebar and content */
+}
+
+.business-dashboard-sidebar {
+    flex: 0 0 250px; /* Fixed width sidebar */
+    background-color: #f0f0f1; /* Light background for public sidebar */
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.business-dashboard-sidebar ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.business-dashboard-sidebar ul li a {
+    display: block;
+    padding: 12px 15px;
+    margin-bottom: 5px;
+    color: #32373c;
+    text-decoration: none;
+    font-size: 1.1em;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.business-dashboard-sidebar ul li a:hover {
+    background-color: #e0e0e0;
+    color: #0073aa;
+}
+
+.business-dashboard-sidebar ul li a.active {
+    background-color: #0073aa;
+    color: #fff;
+    font-weight: bold;
+}
+
+.business-dashboard-content-area {
+    flex-grow: 1;
+    background-color: #fff;
+    padding: 20px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+.business-dashboard-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+.business-dashboard-section h2 {
+    margin-top: 0;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    color: #444;
+}
+.business-dashboard-section img {
+    display: block;
+    margin-top: 10px;
+    border: 1px solid #eee;
+    padding: 5px;
+    background-color: #fff;
+}
+
+/* Forms within the dashboard content area */
+.business-dashboard-content-area form p {
+    margin-bottom: 15px;
+}
+
+.business-dashboard-content-area form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.business-dashboard-content-area form input[type="text"],
+.business-dashboard-content-area form input[type="email"],
+.business-dashboard-content-area form input[type="password"],
+.business-dashboard-content-area form input[type="url"],
+.business-dashboard-content-area form textarea,
+.business-dashboard-content-area form select {
+    width: 100%;
+    max-width: 500px; /* Limit width for better readability */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.business-dashboard-content-area form input[type="file"] {
+    margin-top: 5px;
+}
+
+.business-dashboard-content-area form input[type="submit"] {
+    padding: 10px 20px;
+    background-color: #0073aa;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s ease;
+}
+
+.business-dashboard-content-area form input[type="submit"]:hover {
+    background-color: #005177;
+}
