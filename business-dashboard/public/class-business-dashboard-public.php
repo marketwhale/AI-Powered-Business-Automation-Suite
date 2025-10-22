@@ -67,6 +67,15 @@ class Business_Dashboard_Public {
      */
     public function enqueue_scripts() {
         wp_enqueue_script( $this->plugin_name, BUSINESS_DASHBOARD_PLUGIN_URL . 'public/js/business-dashboard-public.js', array( 'jquery' ), $this->version, false );
+
+        wp_localize_script(
+            $this->plugin_name,
+            'business_dashboard_public_vars',
+            array(
+                'ajax_url' => admin_url( 'admin-ajax.php' ),
+                'nonce'    => wp_create_nonce( 'business_product_sync_action' ), // Ensure nonce is passed
+            )
+        );
     }
 
     /**
@@ -372,8 +381,12 @@ class Business_Dashboard_Public {
                                     <input type="url" name="sync_url" id="sync_url" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'sync_url', true ) ); ?>" class="regular-text" />
                                 </p>
                                 <p>
-                                    <label for="api_key"><?php _e( 'API Key (if required)', 'business-dashboard' ); ?></label>
+                                    <label for="api_key"><?php _e( 'Consumer Key (if required)', 'business-dashboard' ); ?></label>
                                     <input type="text" name="api_key" id="api_key" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'api_key', true ) ); ?>" class="regular-text" />
+                                </p>
+                                <p>
+                                    <label for="consumer_secret"><?php _e( 'Consumer Secret (if required)', 'business-dashboard' ); ?></label>
+                                    <input type="text" name="consumer_secret" id="consumer_secret" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'consumer_secret', true ) ); ?>" class="regular-text" />
                                 </p>
                                 <p>
                                     <label for="data_source_type"><?php _e( 'Data Source Type', 'business-dashboard' ); ?></label>
@@ -423,6 +436,7 @@ class Business_Dashboard_Public {
             'contact_phone'        => sanitize_text_field( $_POST['contact_phone'] ),
             'sync_url'             => esc_url_raw( $_POST['sync_url'] ),
             'api_key'              => sanitize_text_field( $_POST['api_key'] ),
+            'consumer_secret'      => sanitize_text_field( $_POST['consumer_secret'] ),
             'data_source_type'     => sanitize_text_field( $_POST['data_source_type'] ),
         );
 
@@ -446,24 +460,36 @@ class Business_Dashboard_Public {
         }
 
         $current_user_id = get_current_user_id();
+
+        // Log received POST data for debugging
+        error_log( 'Business Dashboard AJAX Sync: POST data received: ' . print_r( $_POST, true ) );
+
         if ( ! isset( $_POST['business_product_sync_nonce'] ) || ! wp_verify_nonce( $_POST['business_product_sync_nonce'], 'business_product_sync_action' ) ) {
+            error_log( 'Business Dashboard AJAX Sync Error: Nonce verification failed for user ' . $current_user_id );
             wp_send_json_error( __( 'Nonce verification failed.', 'business-dashboard' ) );
         }
 
-        $sync_url = get_user_meta( $current_user_id, 'sync_url', true );
+        $base_sync_url = get_user_meta( $current_user_id, 'sync_url', true );
         $api_key = get_user_meta( $current_user_id, 'api_key', true );
+        $consumer_secret = get_user_meta( $current_user_id, 'consumer_secret', true );
         $data_source_type = get_user_meta( $current_user_id, 'data_source_type', true );
 
-        if ( empty( $sync_url ) ) {
+        if ( empty( $base_sync_url ) ) {
+            error_log( 'Business Dashboard AJAX Sync Error: Product sync URL is not set for user ' . $current_user_id );
             wp_send_json_error( __( 'Product sync URL is not set.', 'business-dashboard' ) );
         }
 
-        $sync_result = $this->perform_product_sync( $current_user_id, $sync_url, $api_key, $data_source_type );
+        $sync_url = $this->get_woocommerce_api_endpoint( $base_sync_url );
+        error_log( 'Business Dashboard AJAX Sync: Attempting sync for user ' . $current_user_id . ' from URL: ' . $sync_url );
+
+        $sync_result = $this->perform_product_sync( $current_user_id, $sync_url, $api_key, $consumer_secret, $data_source_type );
 
         if ( is_wp_error( $sync_result ) ) {
+            error_log( 'Business Dashboard AJAX Sync Error for user ' . $current_user_id . ': ' . $sync_result->get_error_message() );
             wp_send_json_error( $sync_result->get_error_message() );
         } else {
             update_user_meta( $current_user_id, 'last_sync_date', current_time( 'mysql' ) );
+            error_log( 'Business Dashboard AJAX Sync Success for user ' . $current_user_id );
             wp_send_json_success( __( 'Products synced successfully!', 'business-dashboard' ) );
         }
     }
@@ -475,12 +501,24 @@ class Business_Dashboard_Public {
      * @param    int    $user_id    The user ID.
      * @param    string $sync_url   The URL of the external product data.
      * @param    string $api_key    API key for authentication (optional).
+     * @param    string $consumer_secret Consumer Secret for WooCommerce API authentication.
      * @param    string $data_source_type Type of data source (json or csv).
      * @return   true|WP_Error      True on success, WP_Error on failure.
      */
-    public function perform_product_sync( $user_id, $sync_url, $api_key = '', $data_source_type = 'json' ) {
+    public function perform_product_sync( $user_id, $sync_url, $api_key = '', $consumer_secret = '', $data_source_type = 'json' ) {
+        // Determine if it's a WooCommerce REST API URL
+        $is_woocommerce_api = ( strpos( $sync_url, '/wp-json/wc/v' ) !== false );
+
+        $request_args = array();
+        if ( $is_woocommerce_api && ! empty( $api_key ) && ! empty( $consumer_secret ) ) {
+            // For WooCommerce REST API, use Basic Auth
+            $request_args['headers'] = array(
+                'Authorization' => 'Basic ' . base64_encode( $api_key . ':' . $consumer_secret ),
+            );
+        }
+
         // Fetch data
-        $response = wp_remote_get( $sync_url );
+        $response = wp_remote_get( $sync_url, $request_args );
 
         if ( is_wp_error( $response ) ) {
             return new WP_Error( 'sync_error', __( 'Failed to fetch data from external source.', 'business-dashboard' ) . ' ' . $response->get_error_message() );
@@ -513,6 +551,21 @@ class Business_Dashboard_Public {
         }
 
         return true;
+    }
+
+    /**
+     * Helper function to construct WooCommerce REST API endpoint.
+     *
+     * @since    1.0.0
+     * @param    string $base_url The base URL of the external website.
+     * @return   string The full WooCommerce REST API endpoint.
+     */
+    private function get_woocommerce_api_endpoint( $base_url ) {
+        $base_url = trailingslashit( $base_url );
+        if ( strpos( $base_url, '/wp-json/wc/v' ) === false ) {
+            return $base_url . 'wp-json/wc/v3/products'; // Assuming v3 and products endpoint
+        }
+        return $base_url;
     }
 
     /**
@@ -561,19 +614,23 @@ class Business_Dashboard_Public {
         $product_id = wc_get_product_id_by_sku( $sku );
         $product = $product_id ? wc_get_product( $product_id ) : new WC_Product();
 
-        $product->set_name( isset( $product_data['title'] ) ? sanitize_text_field( $product_data['title'] ) : '' );
+        $product->set_name( isset( $product_data['name'] ) ? sanitize_text_field( $product_data['name'] ) : (isset( $product_data['title'] ) ? sanitize_text_field( $product_data['title'] ) : '') );
         $product->set_sku( $sku );
         $product->set_price( isset( $product_data['price'] ) ? wc_format_decimal( $product_data['price'] ) : '' );
-        $product->set_regular_price( isset( $product_data['price'] ) ? wc_format_decimal( $product_data['price'] ) : '' );
+        $product->set_regular_price( isset( $product_data['regular_price'] ) ? wc_format_decimal( $product_data['regular_price'] ) : (isset( $product_data['price'] ) ? wc_format_decimal( $product_data['price'] ) : '') );
+        $product->set_sale_price( isset( $product_data['sale_price'] ) ? wc_format_decimal( $product_data['sale_price'] ) : '' );
         $product->set_description( isset( $product_data['description'] ) ? wp_kses_post( $product_data['description'] ) : '' );
-        $product->set_stock_quantity( isset( $product_data['stock'] ) ? absint( $product_data['stock'] ) : 0 );
+        $product->set_short_description( isset( $product_data['short_description'] ) ? wp_kses_post( $product_data['short_description'] ) : '' );
+        $product->set_stock_quantity( isset( $product_data['stock_quantity'] ) ? absint( $product_data['stock_quantity'] ) : 0 );
         $product->set_manage_stock( true ); // Always manage stock for synced products
+        $product->set_status( 'publish' ); // Ensure products are published
 
         // Categories
         if ( isset( $product_data['categories'] ) ) {
-            $categories = explode( ',', $product_data['categories'] );
+            $categories = is_array( $product_data['categories'] ) ? $product_data['categories'] : explode( ',', $product_data['categories'] );
             $term_ids = array();
-            foreach ( $categories as $category_name ) {
+            foreach ( $categories as $category_item ) {
+                $category_name = is_array( $category_item ) && isset( $category_item['name'] ) ? $category_item['name'] : $category_item;
                 $term = get_term_by( 'name', trim( $category_name ), 'product_cat' );
                 if ( ! $term ) {
                     $term = wp_insert_term( trim( $category_name ), 'product_cat' );
@@ -588,7 +645,21 @@ class Business_Dashboard_Public {
         }
 
         // Images
-        if ( isset( $product_data['image_url'] ) && ! empty( $product_data['image_url'] ) ) {
+        if ( isset( $product_data['images'] ) && is_array( $product_data['images'] ) && ! empty( $product_data['images'] ) ) {
+            $gallery_image_ids = array();
+            foreach ( $product_data['images'] as $image ) {
+                if ( isset( $image['src'] ) && ! empty( $image['src'] ) ) {
+                    $image_id = $this->upload_product_image( $image['src'] );
+                    if ( $image_id ) {
+                        $gallery_image_ids[] = $image_id;
+                    }
+                }
+            }
+            if ( ! empty( $gallery_image_ids ) ) {
+                $product->set_image_id( array_shift( $gallery_image_ids ) ); // First image as featured
+                $product->set_gallery_image_ids( $gallery_image_ids ); // Remaining as gallery
+            }
+        } elseif ( isset( $product_data['image_url'] ) && ! empty( $product_data['image_url'] ) ) {
             $image_id = $this->upload_product_image( $product_data['image_url'] );
             if ( $image_id ) {
                 $product->set_image_id( $image_id );
@@ -616,12 +687,14 @@ class Business_Dashboard_Public {
         $approved_business_ids = get_users( $args );
 
         foreach ( $approved_business_ids as $user_id ) {
-            $sync_url = get_user_meta( $user_id, 'sync_url', true );
+            $base_sync_url = get_user_meta( $user_id, 'sync_url', true );
             $api_key = get_user_meta( $user_id, 'api_key', true );
+            $consumer_secret = get_user_meta( $user_id, 'consumer_secret', true );
             $data_source_type = get_user_meta( $user_id, 'data_source_type', true );
 
-            if ( ! empty( $sync_url ) ) {
-                $sync_result = $this->perform_product_sync( $user_id, $sync_url, $api_key, $data_source_type );
+            if ( ! empty( $base_sync_url ) ) {
+                $sync_url = $this->get_woocommerce_api_endpoint( $base_sync_url );
+                $sync_result = $this->perform_product_sync( $user_id, $sync_url, $api_key, $consumer_secret, $data_source_type );
                 if ( ! is_wp_error( $sync_result ) ) {
                     update_user_meta( $user_id, 'last_sync_date', current_time( 'mysql' ) );
                     // Log success

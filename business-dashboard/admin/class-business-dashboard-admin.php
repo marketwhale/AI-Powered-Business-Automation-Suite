@@ -305,12 +305,14 @@ class Business_Dashboard_Admin {
         $public_class = new Business_Dashboard_Public( $this->plugin_name, $this->version );
         $sync_count = 0;
         foreach ( $approved_business_ids as $user_id ) {
-            $sync_url = get_user_meta( $user_id, 'sync_url', true );
+            $base_sync_url = get_user_meta( $user_id, 'sync_url', true );
             $api_key = get_user_meta( $user_id, 'api_key', true );
+            $consumer_secret = get_user_meta( $user_id, 'consumer_secret', true );
             $data_source_type = get_user_meta( $user_id, 'data_source_type', true );
 
-            if ( ! empty( $sync_url ) ) {
-                $sync_result = $public_class->perform_product_sync( $user_id, $sync_url, $api_key, $data_source_type );
+            if ( ! empty( $base_sync_url ) ) {
+                $sync_url = $public_class->get_woocommerce_api_endpoint( $base_sync_url );
+                $sync_result = $public_class->perform_product_sync( $user_id, $sync_url, $api_key, $consumer_secret, $data_source_type );
                 if ( ! is_wp_error( $sync_result ) ) {
                     update_user_meta( $user_id, 'last_sync_date', current_time( 'mysql' ) );
                     $sync_count++;

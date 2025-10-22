@@ -244,9 +244,15 @@ class Business_Dashboard {
                     </td>
                 </tr>
                 <tr>
-                    <th><label for="api_key"><?php _e( 'API Key', 'business-dashboard' ); ?></label></th>
+                    <th><label for="api_key"><?php _e( 'Consumer Key', 'business-dashboard' ); ?></label></th>
                     <td>
                         <input type="text" name="api_key" id="api_key" value="<?php echo esc_attr( get_user_meta( $user->ID, 'api_key', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="consumer_secret"><?php _e( 'Consumer Secret', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="text" name="consumer_secret" id="consumer_secret" value="<?php echo esc_attr( get_user_meta( $user->ID, 'consumer_secret', true ) ); ?>" class="regular-text" />
                     </td>
                 </tr>
                 <tr>
@@ -289,6 +295,7 @@ class Business_Dashboard {
             'cover_image',
             'sync_url',
             'api_key',
+            'consumer_secret',
             'data_source_type',
             'last_sync_date',
         );
