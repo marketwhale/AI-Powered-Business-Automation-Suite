@@ -402,19 +402,102 @@ class Business_Dashboard_Public {
                             </form>
 
                             <h3><?php _e( 'Synced Products', 'business-dashboard' ); ?></h3>
-                            <p><?php _e( 'Last Sync:', 'business-dashboard' ); ?> <?php echo esc_html( get_user_meta( $current_user->ID, 'last_sync_date', true ) ); ?></p>
-                            <!-- Placeholder for synced product list -->
-                            <p>Product list will go here.</p>
+                            <p><?php _e( 'Last Sync:', 'business-dashboard' ); ?> <span id="last-sync-date"><?php echo esc_html( get_user_meta( $current_user->ID, 'last_sync_date', true ) ); ?></span></p>
+                            <div id="synced-product-list">
+                                <?php echo $this->display_synced_products( $current_user->ID ); ?>
+                            </div>
 
                             <h3><?php _e( 'Sync Logs', 'business-dashboard' ); ?></h3>
-                            <!-- Placeholder for sync logs -->
-                            <p>Sync logs will go here.</p>
+                            <div id="sync-logs-display">
+                                <?php echo $this->display_sync_logs( $current_user->ID ); ?>
+                            </div>
                         </div>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
         <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Display synced products for a business user.
+     *
+     * @since    1.0.0
+     * @param    int    $user_id    The business user ID.
+     * @return   string   HTML content for the synced products.
+     */
+    private function display_synced_products( $user_id ) {
+        if ( ! class_exists( 'WooCommerce' ) ) {
+            return '<p>' . __( 'WooCommerce is not active.', 'business-dashboard' ) . '</p>';
+        }
+
+        $args = array(
+            'post_type'      => 'product',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'meta_query'     => array(
+                array(
+                    'key'     => '_business_user_id',
+                    'value'   => $user_id,
+                    'compare' => '=',
+                ),
+            ),
+        );
+        $products = new WP_Query( $args );
+        ob_start();
+        if ( $products->have_posts() ) : ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e( 'Image', 'business-dashboard' ); ?></th>
+                        <th><?php _e( 'Name', 'business-dashboard' ); ?></th>
+                        <th><?php _e( 'SKU', 'business-dashboard' ); ?></th>
+                        <th><?php _e( 'Price', 'business-dashboard' ); ?></th>
+                        <th><?php _e( 'Stock', 'business-dashboard' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while ( $products->have_posts() ) : $products->the_post();
+                        $_product = wc_get_product( get_the_ID() );
+                        ?>
+                        <tr>
+                            <td><?php echo $_product->get_image( 'thumbnail' ); ?></td>
+                            <td><a href="<?php echo esc_url( get_edit_post_link( get_the_ID() ) ); ?>" target="_blank"><?php echo esc_html( $_product->get_name() ); ?></a></td>
+                            <td><?php echo esc_html( $_product->get_sku() ); ?></td>
+                            <td><?php echo wp_kses_post( $_product->get_price_html() ); ?></td>
+                            <td><?php echo esc_html( $_product->get_stock_quantity() ); ?></td>
+                        </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+        <?php else : ?>
+            <p><?php _e( 'No products synced yet.', 'business-dashboard' ); ?></p>
+        <?php endif;
+        wp_reset_postdata();
+        return ob_get_clean();
+    }
+
+    /**
+     * Display sync logs for a business user.
+     *
+     * @since    1.0.0
+     * @param    int    $user_id    The business user ID.
+     * @return   string   HTML content for the sync logs.
+     */
+    private function display_sync_logs( $user_id ) {
+        $logs = get_user_meta( $user_id, 'business_dashboard_sync_logs', true );
+        if ( empty( $logs ) || ! is_array( $logs ) ) {
+            return '<p>' . __( 'No sync logs available.', 'business-dashboard' ) . '</p>';
+        }
+
+        ob_start();
+        echo '<ul class="business-dashboard-sync-logs">';
+        foreach ( array_reverse( $logs ) as $log ) { // Show most recent first
+            $status_class = ( $log['status'] === 'success' ) ? 'business-dashboard-success' : 'business-dashboard-error';
+            echo '<li><span class="' . esc_attr( $status_class ) . '">' . esc_html( ucfirst( $log['status'] ) ) . '</span> - ' . esc_html( $log['timestamp'] ) . ': ' . esc_html( $log['message'] ) . '</li>';
+        }
+        echo '</ul>';
         return ob_get_clean();
     }
 
@@ -490,7 +573,15 @@ class Business_Dashboard_Public {
         } else {
             update_user_meta( $current_user_id, 'last_sync_date', current_time( 'mysql' ) );
             error_log( 'Business Dashboard AJAX Sync Success for user ' . $current_user_id );
-            wp_send_json_success( __( 'Products synced successfully!', 'business-dashboard' ) );
+            
+            // Prepare updated content for AJAX response
+            $response_data = array(
+                'message'       => __( 'Products synced successfully!', 'business-dashboard' ),
+                'last_sync'     => get_user_meta( $current_user_id, 'last_sync_date', true ),
+                'product_list'  => $this->display_synced_products( $current_user_id ),
+                'sync_logs'     => $this->display_sync_logs( $current_user_id ),
+            );
+            wp_send_json_success( $response_data );
         }
     }
 
@@ -506,6 +597,12 @@ class Business_Dashboard_Public {
      * @return   true|WP_Error      True on success, WP_Error on failure.
      */
     public function perform_product_sync( $user_id, $sync_url, $api_key = '', $consumer_secret = '', $data_source_type = 'json' ) {
+        $log_entry = array(
+            'timestamp' => current_time( 'mysql' ),
+            'status'    => 'failed',
+            'message'   => '',
+        );
+
         // Determine if it's a WooCommerce REST API URL
         $is_woocommerce_api = ( strpos( $sync_url, '/wp-json/wc/v' ) !== false );
 
@@ -521,7 +618,9 @@ class Business_Dashboard_Public {
         $response = wp_remote_get( $sync_url, $request_args );
 
         if ( is_wp_error( $response ) ) {
-            return new WP_Error( 'sync_error', __( 'Failed to fetch data from external source.', 'business-dashboard' ) . ' ' . $response->get_error_message() );
+            $log_entry['message'] = __( 'Failed to fetch data from external source.', 'business-dashboard' ) . ' ' . $response->get_error_message();
+            $this->add_sync_log( $user_id, $log_entry );
+            return new WP_Error( 'sync_error', $log_entry['message'] );
         }
 
         $body = wp_remote_retrieve_body( $response );
@@ -530,27 +629,62 @@ class Business_Dashboard_Public {
         if ( 'json' === $data_source_type ) {
             $products_data = json_decode( $body, true );
             if ( ! is_array( $products_data ) ) {
-                return new WP_Error( 'sync_error', __( 'Invalid JSON data received.', 'business-dashboard' ) );
+                $log_entry['message'] = __( 'Invalid JSON data received.', 'business-dashboard' );
+                $this->add_sync_log( $user_id, $log_entry );
+                return new WP_Error( 'sync_error', $log_entry['message'] );
             }
         } elseif ( 'csv' === $data_source_type ) {
             $products_data = $this->parse_csv_data( $body );
             if ( is_wp_error( $products_data ) ) {
+                $log_entry['message'] = $products_data->get_error_message();
+                $this->add_sync_log( $user_id, $log_entry );
                 return $products_data;
             }
         } else {
-            return new WP_Error( 'sync_error', __( 'Unsupported data source type.', 'business-dashboard' ) );
+            $log_entry['message'] = __( 'Unsupported data source type.', 'business-dashboard' );
+            $this->add_sync_log( $user_id, $log_entry );
+            return new WP_Error( 'sync_error', $log_entry['message'] );
         }
 
         if ( empty( $products_data ) ) {
-            return new WP_Error( 'sync_error', __( 'No product data found.', 'business-dashboard' ) );
+            $log_entry['message'] = __( 'No product data found.', 'business-dashboard' );
+            $this->add_sync_log( $user_id, $log_entry );
+            return new WP_Error( 'sync_error', $log_entry['message'] );
         }
 
         // Process and import products
+        $imported_count = 0;
         foreach ( $products_data as $product_data ) {
-            $this->import_woocommerce_product( $user_id, $product_data );
+            $result = $this->import_woocommerce_product( $user_id, $product_data );
+            if ( ! is_wp_error( $result ) ) {
+                $imported_count++;
+            } else {
+                error_log( 'Business Dashboard Product Import Error for user ' . $user_id . ': ' . $result->get_error_message() );
+            }
         }
 
+        $log_entry['status'] = 'success';
+        $log_entry['message'] = sprintf( __( '%d products synced successfully.', 'business-dashboard' ), $imported_count );
+        $this->add_sync_log( $user_id, $log_entry );
         return true;
+    }
+
+    /**
+     * Add a sync log entry for a business user.
+     *
+     * @since    1.0.0
+     * @param    int    $user_id    The business user ID.
+     * @param    array  $log_entry  The log entry to add.
+     */
+    private function add_sync_log( $user_id, $log_entry ) {
+        $logs = get_user_meta( $user_id, 'business_dashboard_sync_logs', true );
+        if ( ! is_array( $logs ) ) {
+            $logs = array();
+        }
+        $logs[] = $log_entry;
+        // Keep only the last 10 logs to prevent meta bloat
+        $logs = array_slice( $logs, -10 );
+        update_user_meta( $user_id, 'business_dashboard_sync_logs', $logs );
     }
 
     /**
@@ -607,7 +741,7 @@ class Business_Dashboard_Public {
         $sku = isset( $product_data['sku'] ) ? sanitize_text_field( $product_data['sku'] ) : '';
         if ( empty( $sku ) ) {
             error_log( 'Business Dashboard Product Sync Error: Product SKU is missing for user ' . $user_id );
-            return;
+            return new WP_Error( 'product_sku_missing', __( 'Product SKU is missing.', 'business-dashboard' ) );
         }
 
         // Check if product exists by SKU
@@ -670,6 +804,7 @@ class Business_Dashboard_Public {
 
         // Link product to business user
         update_post_meta( $product->get_id(), '_business_user_id', $user_id );
+        return true;
     }
 
     /**

@@ -48,10 +48,10 @@
                     data: formData,
                     success: function(response) {
                         if (response.success) {
-                            $form.prepend('<p class="business-dashboard-success business-dashboard-message">' + response.data + '</p>');
-                            // Optionally update last sync date without full page reload
-                            var newDate = new Date().toLocaleString(); // Or get from response if available
-                            $form.closest('.business-dashboard-section').find('p:contains("Last Sync:")').html('Last Sync: ' + newDate);
+                            $form.prepend('<p class="business-dashboard-success business-dashboard-message">' + response.data.message + '</p>');
+                            $('#last-sync-date').text(response.data.last_sync);
+                            $('#synced-product-list').html(response.data.product_list);
+                            $('#sync-logs-display').html(response.data.sync_logs);
                         } else {
                             $form.prepend('<p class="business-dashboard-error business-dashboard-message">' + response.data + '</p>');
                         }
