@@ -74,6 +74,8 @@ class Business_Dashboard_Public {
             array(
                 'ajax_url' => admin_url( 'admin-ajax.php' ),
                 'nonce'    => wp_create_nonce( 'business_product_sync_action' ), // Ensure nonce is passed
+                'dashboard_nonce' => wp_create_nonce( 'business_dashboard_load_section_nonce' ),
+                'loading_text' => __( 'Loading...', 'business-dashboard' ),
             )
         );
     }
@@ -311,113 +313,165 @@ class Business_Dashboard_Public {
         }
 
         $current_section = isset( $_GET['section'] ) ? $_GET['section'] : 'profile';
+        $is_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX;
+
+        if ( $is_ajax ) {
+            // Only output the content for the requested section during AJAX calls
+            $this->render_dashboard_section_content( $current_user->ID, $current_section );
+            return ob_get_clean();
+        }
         ?>
         <div class="business-dashboard-wrap">
-            <h1><?php _e( 'Business Dashboard', 'business-dashboard' ); ?></h1>
-
             <div class="business-dashboard-layout">
                 <div class="business-dashboard-sidebar">
+                    <div class="business-dashboard-logo">
+                        <h2><?php _e( 'Business Dashboard', 'business-dashboard' ); ?></h2>
+                    </div>
                     <ul>
-                        <li><a href="?section=profile" class="<?php echo 'profile' === $current_section ? 'active' : ''; ?>"><?php _e( 'Business Profile', 'business-dashboard' ); ?></a></li>
-                        <li><a href="?section=product-sync" class="<?php echo 'product-sync' === $current_section ? 'active' : ''; ?>"><?php _e( 'Product Sync', 'business-dashboard' ); ?></a></li>
+                        <li><a href="?section=profile" class="business-dashboard-nav-link <?php echo 'profile' === $current_section ? 'active' : ''; ?>" data-section="profile"><?php _e( 'Business Profile', 'business-dashboard' ); ?></a></li>
+                        <li><a href="?section=product-sync" class="business-dashboard-nav-link <?php echo 'product-sync' === $current_section ? 'active' : ''; ?>" data-section="product-sync"><?php _e( 'Product Sync', 'business-dashboard' ); ?></a></li>
+                        <li><a href="<?php echo esc_url( wp_logout_url( home_url() ) ); ?>" class="business-dashboard-nav-link"><?php _e( 'Logout', 'business-dashboard' ); ?></a></li>
                     </ul>
                 </div>
 
-                <div class="business-dashboard-content-area">
-                    <?php if ( 'profile' === $current_section ) : ?>
-                        <!-- Business Profile Section -->
-                        <div class="business-dashboard-section">
-                            <h2><?php _e( 'Business Profile', 'business-dashboard' ); ?></h2>
-                            <form method="post" enctype="multipart/form-data">
-                                <p>
-                                    <label for="business_name"><?php _e( 'Business Name', 'business-dashboard' ); ?></label>
-                                    <input type="text" name="business_name" id="business_name" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'business_name', true ) ); ?>" required />
-                                </p>
-                                <p>
-                                    <label for="website_url"><?php _e( 'Website URL', 'business-dashboard' ); ?></label>
-                                    <input type="url" name="website_url" id="website_url" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'website_url', true ) ); ?>" />
-                                </p>
-                                <p>
-                                    <label for="business_description"><?php _e( 'Business Description', 'business-dashboard' ); ?></label>
-                                    <textarea name="business_description" id="business_description" rows="5"><?php echo esc_textarea( get_user_meta( $current_user->ID, 'business_description', true ) ); ?></textarea>
-                                </p>
-                                <p>
-                                    <label for="contact_phone"><?php _e( 'Contact Phone', 'business-dashboard' ); ?></label>
-                                    <input type="text" name="contact_phone" id="contact_phone" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'contact_phone', true ) ); ?>" />
-                                </p>
-                                <p>
-                                    <label for="profile_image"><?php _e( 'Profile Image', 'business-dashboard' ); ?></label>
-                                    <input type="file" name="profile_image" id="profile_image" accept="image/*" />
-                                    <?php
-                                    $profile_image_url = get_user_meta( $current_user->ID, 'profile_image', true );
-                                    if ( $profile_image_url ) {
-                                        echo '<img src="' . esc_url( $profile_image_url ) . '" style="max-width: 100px; height: auto;" />';
-                                    }
-                                    ?>
-                                </p>
-                                <p>
-                                    <label for="cover_image"><?php _e( 'Cover Image', 'business-dashboard' ); ?></label>
-                                    <input type="file" name="cover_image" id="cover_image" accept="image/*" />
-                                    <?php
-                                    $cover_image_url = get_user_meta( $current_user->ID, 'cover_image', true );
-                                    if ( $cover_image_url ) {
-                                        echo '<img src="' . esc_url( $cover_image_url ) . '" style="max-width: 200px; height: auto;" />';
-                                    }
-                                    ?>
-                                </p>
-                                <p>
-                                    <input type="submit" name="save_profile" value="<?php _e( 'Save Changes', 'business-dashboard' ); ?>" />
-                                </p>
-                                <?php wp_nonce_field( 'business_profile_update_action', 'business_profile_nonce' ); ?>
-                            </form>
-                        </div>
-                    <?php elseif ( 'product-sync' === $current_section ) : ?>
-                        <!-- Product Sync Section -->
-                        <div class="business-dashboard-section">
-                            <h2><?php _e( 'Product Sync', 'business-dashboard' ); ?></h2>
-                            <form method="post">
-                                <p>
-                                    <label for="sync_url"><?php _e( 'External Website URL', 'business-dashboard' ); ?></label>
-                                    <input type="url" name="sync_url" id="sync_url" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'sync_url', true ) ); ?>" class="regular-text" />
-                                </p>
-                                <p>
-                                    <label for="api_key"><?php _e( 'Consumer Key (if required)', 'business-dashboard' ); ?></label>
-                                    <input type="text" name="api_key" id="api_key" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'api_key', true ) ); ?>" class="regular-text" />
-                                </p>
-                                <p>
-                                    <label for="consumer_secret"><?php _e( 'Consumer Secret (if required)', 'business-dashboard' ); ?></label>
-                                    <input type="text" name="consumer_secret" id="consumer_secret" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'consumer_secret', true ) ); ?>" class="regular-text" />
-                                </p>
-                                <p>
-                                    <label for="data_source_type"><?php _e( 'Data Source Type', 'business-dashboard' ); ?></label>
-                                    <select name="data_source_type" id="data_source_type">
-                                        <option value="json" <?php selected( get_user_meta( $current_user->ID, 'data_source_type', true ), 'json' ); ?>><?php _e( 'JSON REST API', 'business-dashboard' ); ?></option>
-                                        <option value="csv" <?php selected( get_user_meta( $current_user->ID, 'data_source_type', true ), 'csv' ); ?>><?php _e( 'CSV Feed', 'business-dashboard' ); ?></option>
-                                    </select>
-                                </p>
-                                <p>
-                                    <input type="submit" name="sync_products_manual" value="<?php _e( 'Sync Now', 'business-dashboard' ); ?>" class="button button-primary" />
-                                </p>
-                                <?php wp_nonce_field( 'business_product_sync_action', 'business_product_sync_nonce' ); ?>
-                            </form>
-
-                            <h3><?php _e( 'Synced Products', 'business-dashboard' ); ?></h3>
-                            <p><?php _e( 'Last Sync:', 'business-dashboard' ); ?> <span id="last-sync-date"><?php echo esc_html( get_user_meta( $current_user->ID, 'last_sync_date', true ) ); ?></span></p>
-                            <div id="synced-product-list">
-                                <?php echo $this->display_synced_products( $current_user->ID ); ?>
-                            </div>
-
-                            <h3><?php _e( 'Sync Logs', 'business-dashboard' ); ?></h3>
-                            <div id="sync-logs-display">
-                                <?php echo $this->display_sync_logs( $current_user->ID ); ?>
-                            </div>
-                        </div>
-                    <?php endif; ?>
+                <div class="business-dashboard-content-area" id="business-dashboard-content-area">
+                    <?php $this->render_dashboard_section_content( $current_user->ID, $current_section ); ?>
                 </div>
             </div>
         </div>
         <?php
         return ob_get_clean();
+    }
+
+    /**
+     * Render the content for a specific dashboard section.
+     *
+     * @since    1.0.0
+     * @param    int    $user_id    The current user ID.
+     * @param    string $section    The section to render.
+     */
+    private function render_dashboard_section_content( $user_id, $section ) {
+        $current_user = get_userdata( $user_id ); // Re-fetch user data for consistency
+        if ( 'profile' === $section ) : ?>
+            <!-- Business Profile Section -->
+            <div class="business-dashboard-section">
+                <h2><?php _e( 'Business Profile', 'business-dashboard' ); ?></h2>
+                <form method="post" enctype="multipart/form-data" class="business-dashboard-profile-form">
+                    <p>
+                        <label for="business_name"><?php _e( 'Business Name', 'business-dashboard' ); ?></label>
+                        <input type="text" name="business_name" id="business_name" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'business_name', true ) ); ?>" required />
+                    </p>
+                    <p>
+                        <label for="website_url"><?php _e( 'Website URL', 'business-dashboard' ); ?></label>
+                        <input type="url" name="website_url" id="website_url" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'website_url', true ) ); ?>" />
+                    </p>
+                    <p>
+                        <label for="business_description"><?php _e( 'Business Description', 'business-dashboard' ); ?></label>
+                        <textarea name="business_description" id="business_description" rows="5"><?php echo esc_textarea( get_user_meta( $current_user->ID, 'business_description', true ) ); ?></textarea>
+                    </p>
+                    <p>
+                        <label for="contact_phone"><?php _e( 'Contact Phone', 'business-dashboard' ); ?></label>
+                        <input type="text" name="contact_phone" id="contact_phone" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'contact_phone', true ) ); ?>" />
+                    </p>
+                    <p>
+                        <label for="profile_image"><?php _e( 'Profile Image', 'business-dashboard' ); ?></label>
+                        <input type="file" name="profile_image" id="profile_image" accept="image/*" />
+                        <?php
+                        $profile_image_url = get_user_meta( $current_user->ID, 'profile_image', true );
+                        if ( $profile_image_url ) {
+                            echo '<img src="' . esc_url( $profile_image_url ) . '" style="max-width: 100px; height: auto;" />';
+                        }
+                        ?>
+                    </p>
+                    <p>
+                        <label for="cover_image"><?php _e( 'Cover Image', 'business-dashboard' ); ?></label>
+                        <input type="file" name="cover_image" id="cover_image" accept="image/*" />
+                        <?php
+                        $cover_image_url = get_user_meta( $current_user->ID, 'cover_image', true );
+                        if ( $cover_image_url ) {
+                            echo '<img src="' . esc_url( $cover_image_url ) . '" style="max-width: 200px; height: auto;" />';
+                        }
+                        ?>
+                    </p>
+                    <p>
+                        <input type="submit" name="save_profile" value="<?php _e( 'Save Changes', 'business-dashboard' ); ?>" />
+                    </p>
+                    <?php wp_nonce_field( 'business_profile_update_action', 'business_profile_nonce' ); ?>
+                </form>
+            </div>
+        <?php elseif ( 'product-sync' === $section ) : ?>
+            <!-- Product Sync Section -->
+            <div class="business-dashboard-section">
+                <h2><?php _e( 'Product Sync', 'business-dashboard' ); ?></h2>
+                <form method="post" class="business-dashboard-sync-form">
+                    <p>
+                        <label for="sync_url"><?php _e( 'External Website URL', 'business-dashboard' ); ?></label>
+                        <input type="url" name="sync_url" id="sync_url" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'sync_url', true ) ); ?>" class="regular-text" />
+                    </p>
+                    <p>
+                        <label for="api_key"><?php _e( 'Consumer Key (if required)', 'business-dashboard' ); ?></label>
+                        <input type="text" name="api_key" id="api_key" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'api_key', true ) ); ?>" class="regular-text" />
+                    </p>
+                    <p>
+                        <label for="consumer_secret"><?php _e( 'Consumer Secret (if required)', 'business-dashboard' ); ?></label>
+                        <input type="text" name="consumer_secret" id="consumer_secret" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'consumer_secret', true ) ); ?>" class="regular-text" />
+                    </p>
+                    <p>
+                        <label for="data_source_type"><?php _e( 'Data Source Type', 'business-dashboard' ); ?></label>
+                        <select name="data_source_type" id="data_source_type">
+                            <option value="json" <?php selected( get_user_meta( $current_user->ID, 'data_source_type', true ), 'json' ); ?>><?php _e( 'JSON REST API', 'business-dashboard' ); ?></option>
+                            <option value="csv" <?php selected( get_user_meta( $current_user->ID, 'data_source_type', true ), 'csv' ); ?>><?php _e( 'CSV Feed', 'business-dashboard' ); ?></option>
+                        </select>
+                    </p>
+                    <p>
+                        <input type="submit" name="sync_products_manual" value="<?php _e( 'Sync Now', 'business-dashboard' ); ?>" class="button button-primary" />
+                    </p>
+                    <?php wp_nonce_field( 'business_product_sync_action', 'business_product_sync_nonce' ); ?>
+                </form>
+
+                <h3><?php _e( 'Synced Products', 'business-dashboard' ); ?></h3>
+                <p><?php _e( 'Last Sync:', 'business-dashboard' ); ?> <span id="last-sync-date"><?php echo esc_html( get_user_meta( $current_user->ID, 'last_sync_date', true ) ); ?></span></p>
+                <div id="synced-product-list">
+                    <?php echo $this->display_synced_products( $current_user->ID ); ?>
+                </div>
+
+                <h3><?php _e( 'Sync Logs', 'business-dashboard' ); ?></h3>
+                <div id="sync-logs-display">
+                    <?php echo $this->display_sync_logs( $current_user->ID ); ?>
+                </div>
+            </div>
+        <?php endif;
+    }
+
+    /**
+     * AJAX handler for loading dashboard sections.
+     *
+     * @since    1.0.0
+     */
+    public function load_dashboard_section() {
+        check_ajax_referer( 'business_dashboard_load_section_nonce', 'nonce' );
+
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to view this page.', 'business-dashboard' ) );
+        }
+
+        $current_user = wp_get_current_user();
+        if ( ! in_array( 'business_user', (array) $current_user->roles ) ) {
+            wp_send_json_error( __( 'You do not have permission to view this page.', 'business-dashboard' ) );
+        }
+
+        $business_status = get_user_meta( $current_user->ID, 'business_status', true );
+        if ( 'approved' !== $business_status ) {
+            wp_send_json_error( __( 'Your business account is awaiting approval or has been rejected. You cannot access the dashboard yet.', 'business-dashboard' ) );
+        }
+
+        $section = isset( $_POST['section'] ) ? sanitize_text_field( $_POST['section'] ) : 'profile';
+
+        ob_start();
+        $this->render_dashboard_section_content( $current_user->ID, $section );
+        $content = ob_get_clean();
+
+        wp_send_json_success( array( 'content' => $content ) );
     }
 
     /**
@@ -840,6 +894,21 @@ class Business_Dashboard_Public {
                 }
             }
         }
+    }
+
+    /**
+     * Add a custom body class when the business dashboard shortcode is active.
+     *
+     * @since    1.0.0
+     * @param    array $classes The existing body classes.
+     * @return   array          Modified body classes.
+     */
+    public function add_body_class_for_dashboard( $classes ) {
+        global $post;
+        if ( is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'business_dashboard' ) ) {
+            $classes[] = 'business-dashboard-page';
+        }
+        return $classes;
     }
 
     /**

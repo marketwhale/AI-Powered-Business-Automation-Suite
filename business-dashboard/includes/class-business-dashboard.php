@@ -164,6 +164,10 @@ class Business_Dashboard {
         $this->loader->add_action( 'wp_ajax_business_dashboard_manual_product_sync', $plugin_public, 'manual_product_sync' );
         $this->loader->add_action( 'wp_ajax_nopriv_business_dashboard_manual_product_sync', $plugin_public, 'manual_product_sync' );
 
+        // AJAX for loading dashboard sections
+        $this->loader->add_action( 'wp_ajax_business_dashboard_load_section', $plugin_public, 'load_dashboard_section' );
+        $this->loader->add_action( 'wp_ajax_nopriv_business_dashboard_load_section', $plugin_public, 'load_dashboard_section' );
+
         // WP Cron for scheduled product sync
         $this->loader->add_action( 'business_dashboard_scheduled_sync', $plugin_public, 'scheduled_product_sync' );
     }

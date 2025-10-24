@@ -62,69 +62,115 @@
 }
 
 /* Dashboard styles */
-.business-dashboard-wrap {
-    max-width: 1200px; /* Wider for sidebar layout */
-    margin: 20px auto;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #fff;
+body.business-dashboard-page {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f4f6f8; /* Light background for the entire page */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
-.business-dashboard-wrap h1 {
-    text-align: center;
-    margin-bottom: 30px;
-    color: #32373c;
-    font-size: 2.2em;
+
+.business-dashboard-wrap {
+    display: flex;
+    flex-grow: 1;
+    min-height: 100vh; /* Ensure it takes full viewport height */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 0; /* Remove margin to be full screen */
+    padding: 0; /* Remove padding */
 }
 
 .business-dashboard-layout {
     display: flex;
-    gap: 20px; /* Space between sidebar and content */
+    flex-grow: 1;
 }
 
 .business-dashboard-sidebar {
-    flex: 0 0 250px; /* Fixed width sidebar */
-    background-color: #f0f0f1; /* Light background for public sidebar */
-    padding: 20px;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    flex: 0 0 280px; /* Wider fixed width sidebar */
+    background-color: #2c3e50; /* Darker, modern sidebar color */
+    color: #ecf0f1;
+    padding: 30px 0;
+    box-shadow: 3px 0 10px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.business-dashboard-sidebar .business-dashboard-logo {
+    margin-bottom: 40px;
+    padding: 0 20px;
+    text-align: center;
+}
+
+.business-dashboard-sidebar .business-dashboard-logo h2 {
+    color: #fff;
+    font-size: 1.8em;
+    margin: 0;
+    font-weight: 600;
 }
 
 .business-dashboard-sidebar ul {
     list-style: none;
     margin: 0;
     padding: 0;
+    width: 100%;
 }
 
-.business-dashboard-sidebar ul li a {
-    display: block;
-    padding: 12px 15px;
+.business-dashboard-sidebar ul li {
     margin-bottom: 5px;
-    color: #32373c;
+}
+
+.business-dashboard-sidebar ul li a.business-dashboard-nav-link {
+    display: flex;
+    align-items: center;
+    padding: 15px 30px;
+    color: #bdc3c7;
     text-decoration: none;
     font-size: 1.1em;
-    border-radius: 4px;
-    transition: all 0.2s ease;
+    border-left: 5px solid transparent;
+    transition: all 0.3s ease;
+    font-weight: 500;
 }
 
-.business-dashboard-sidebar ul li a:hover {
-    background-color: #e0e0e0;
-    color: #0073aa;
-}
-
-.business-dashboard-sidebar ul li a.active {
-    background-color: #0073aa;
+.business-dashboard-sidebar ul li a.business-dashboard-nav-link:hover {
+    background-color: #34495e;
+    border-left-color: #3498db;
     color: #fff;
-    font-weight: bold;
+}
+
+.business-dashboard-sidebar ul li a.business-dashboard-nav-link.active {
+    background-color: #3498db;
+    border-left-color: #2980b9;
+    color: #fff;
+    font-weight: 600;
 }
 
 .business-dashboard-content-area {
     flex-grow: 1;
-    background-color: #fff;
-    padding: 20px;
-    border: 1px solid #eee;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    background-color: #ffffff;
+    padding: 40px;
+    overflow-y: auto; /* Enable scrolling for content */
+    position: relative;
+}
+
+.business-dashboard-content-area h1 {
+    margin-top: 0;
+    margin-bottom: 30px;
+    color: #2c3e50;
+    font-size: 2.5em;
+    border-bottom: 2px solid #ecf0f1;
+    padding-bottom: 15px;
+    font-weight: 700;
+}
+
+.business-dashboard-loading {
+    text-align: center;
+    padding: 50px;
+    font-size: 1.2em;
+    color: #7f8c8d;
 }
 
 .business-dashboard-section {
