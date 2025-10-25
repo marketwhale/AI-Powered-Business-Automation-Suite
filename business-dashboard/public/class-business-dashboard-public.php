@@ -363,28 +363,28 @@ class Business_Dashboard_Public {
             <div class="business-dashboard-section">
                 <h2><?php _e( 'Product Sync', 'business-dashboard' ); ?></h2>
                 <form method="post" class="business-dashboard-sync-form">
-                    <p>
+                    <div class="form-group">
                         <label for="sync_url"><?php _e( 'External Website URL', 'business-dashboard' ); ?></label>
                         <input type="url" name="sync_url" id="sync_url" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'sync_url', true ) ); ?>" class="regular-text" />
-                    </p>
-                    <p>
+                    </div>
+                    <div class="form-group">
                         <label for="api_key"><?php _e( 'Consumer Key (if required)', 'business-dashboard' ); ?></label>
                         <input type="text" name="api_key" id="api_key" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'api_key', true ) ); ?>" class="regular-text" />
-                    </p>
-                    <p>
+                    </div>
+                    <div class="form-group">
                         <label for="consumer_secret"><?php _e( 'Consumer Secret (if required)', 'business-dashboard' ); ?></label>
                         <input type="text" name="consumer_secret" id="consumer_secret" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'consumer_secret', true ) ); ?>" class="regular-text" />
-                    </p>
-                    <p>
+                    </div>
+                    <div class="form-group">
                         <label for="data_source_type"><?php _e( 'Data Source Type', 'business-dashboard' ); ?></label>
                         <select name="data_source_type" id="data_source_type">
                             <option value="json" <?php selected( get_user_meta( $current_user->ID, 'data_source_type', true ), 'json' ); ?>><?php _e( 'JSON REST API', 'business-dashboard' ); ?></option>
                             <option value="csv" <?php selected( get_user_meta( $current_user->ID, 'data_source_type', true ), 'csv' ); ?>><?php _e( 'CSV Feed', 'business-dashboard' ); ?></option>
                         </select>
-                    </p>
-                    <p>
+                    </div>
+                    <div class="form-group">
                         <input type="submit" name="sync_products_manual" value="<?php _e( 'Sync Now', 'business-dashboard' ); ?>" class="button button-primary" />
-                    </p>
+                    </div>
                     <?php wp_nonce_field( 'business_product_sync_action', 'business_product_sync_nonce' ); ?>
                 </form>
 

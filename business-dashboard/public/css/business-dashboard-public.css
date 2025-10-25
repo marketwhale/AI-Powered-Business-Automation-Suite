@@ -7,15 +7,6 @@
  * @package    Business_Dashboard
  * @subpackage Business_Dashboard/public/css
  */
-/*
- * Public-facing stylesheet for this plugin.
- *
- * @link       https://example.com
- * @since      1.0.0
- *
- * @package    Business_Dashboard
- * @subpackage Business_Dashboard/public/css
- */
 
 /* --- Global Styles & Design System --- */
 :root {
@@ -717,6 +708,53 @@ body.business-dashboard-page {
     border-radius: var(--border-radius-small);
 }
 
+/* Styles for form groups and image preview in post creation */
+.business-dashboard-post-creation .form-group {
+    margin-bottom: 20px;
+}
+
+.business-dashboard-post-creation .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.business-dashboard-post-creation .form-group input[type="text"],
+.business-dashboard-post-creation .form-group textarea,
+.business-dashboard-post-creation .form-group input[type="file"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-small);
+    box-sizing: border-box;
+    font-size: 1em;
+    transition: border-color var(--transition-speed) ease;
+}
+
+.business-dashboard-post-creation .form-group input[type="text"]:focus,
+.business-dashboard-post-creation .form-group textarea:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+.business-dashboard-post-creation .image-preview {
+    margin-top: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-small);
+    padding: 10px;
+    background-color: var(--bg-light);
+    text-align: center;
+}
+
+.business-dashboard-post-creation .image-preview img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--border-radius-small);
+    display: block;
+    margin: 0 auto;
+}
+
 /* Loading animation for buttons */
 .button.loading {
     position: relative;
@@ -740,6 +778,19 @@ body.business-dashboard-page {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* --- Content Transition Animations --- */
+.business-dashboard-content-area.fade-out {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.business-dashboard-content-area.fade-in {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.3s ease-in, transform 0.3s ease-in;
 }
 
 /* --- Responsive Adjustments --- */
@@ -847,5 +898,10 @@ body.business-dashboard-page {
     }
     .business-dashboard-form-wrap {
         padding: 20px;
+    }
+    .business-dashboard-post-creation .form-group input[type="text"],
+    .business-dashboard-post-creation .form-group textarea,
+    .business-dashboard-post-creation .form-group input[type="file"] {
+        padding: 10px;
     }
 }

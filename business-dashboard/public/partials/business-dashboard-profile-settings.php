@@ -93,11 +93,11 @@ $industries = array( 'Retail', 'Food & Beverage', 'Technology', 'Healthcare', 'E
         <form id="business-profile-settings-form" method="post" enctype="multipart/form-data">
             <div class="business-dashboard-tab-content" id="business-info-tab">
                 <h3><?php _e( 'Business Information', 'business-dashboard' ); ?></h3>
-                <p>
+                <div class="form-group">
                     <label for="business_name"><?php _e( 'Business Name', 'business-dashboard' ); ?></label>
                     <input type="text" name="business_name" id="business_name" value="<?php echo esc_attr( $business_name ); ?>" required />
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="country"><?php _e( 'Country', 'business-dashboard' ); ?></label>
                     <select name="country" id="country">
                         <option value=""><?php _e( 'Select Country', 'business-dashboard' ); ?></option>
@@ -105,8 +105,8 @@ $industries = array( 'Retail', 'Food & Beverage', 'Technology', 'Healthcare', 'E
                             <option value="<?php echo esc_attr( $c ); ?>" <?php selected( $country, $c ); ?>><?php echo esc_html( $c ); ?></option>
                         <?php endforeach; ?>
                     </select>
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="business_type"><?php _e( 'Business Type', 'business-dashboard' ); ?></label>
                     <select name="business_type" id="business_type">
                         <option value=""><?php _e( 'Select Business Type', 'business-dashboard' ); ?></option>
@@ -114,8 +114,8 @@ $industries = array( 'Retail', 'Food & Beverage', 'Technology', 'Healthcare', 'E
                             <option value="<?php echo esc_attr( $type ); ?>" <?php selected( $business_type, $type ); ?>><?php echo esc_html( $type ); ?></option>
                         <?php endforeach; ?>
                     </select>
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="industry"><?php _e( 'Industry', 'business-dashboard' ); ?></label>
                     <select name="industry" id="industry">
                         <option value=""><?php _e( 'Select Industry', 'business-dashboard' ); ?></option>
@@ -123,97 +123,97 @@ $industries = array( 'Retail', 'Food & Beverage', 'Technology', 'Healthcare', 'E
                             <option value="<?php echo esc_attr( $ind ); ?>" <?php selected( $industry, $ind ); ?>><?php echo esc_html( $ind ); ?></option>
                         <?php endforeach; ?>
                     </select>
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="established_year"><?php _e( 'Established Year', 'business-dashboard' ); ?></label>
                     <input type="number" name="established_year" id="established_year" value="<?php echo esc_attr( $established_year ); ?>" min="1900" max="<?php echo date('Y'); ?>" />
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="business_description"><?php _e( 'Short Description (max 160 chars)', 'business-dashboard' ); ?></label>
                     <textarea name="business_description" id="business_description" rows="3" maxlength="160"><?php echo esc_textarea( $business_description ); ?></textarea>
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="full_description"><?php _e( 'Full Description', 'business-dashboard' ); ?></label>
                     <textarea name="full_description" id="full_description" rows="10"><?php echo esc_textarea( $full_description ); ?></textarea>
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="profile_image"><?php _e( 'Profile Image', 'business-dashboard' ); ?></label>
                     <input type="file" name="profile_image" id="profile_image" accept="image/*" />
                     <?php if ( $profile_image_url ) : ?><img src="<?php echo esc_url( $profile_image_url ); ?>" alt="<?php _e( 'Profile Image', 'business-dashboard' ); ?>" style="max-width: 100px; height: auto; margin-top: 10px;" /><?php endif; ?>
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="cover_image"><?php _e( 'Cover Image', 'business-dashboard' ); ?></label>
                     <input type="file" name="cover_image" id="cover_image" accept="image/*" />
                     <?php if ( $cover_image_url ) : ?><img src="<?php echo esc_url( $cover_image_url ); ?>" alt="<?php _e( 'Cover Image', 'business-dashboard' ); ?>" style="max-width: 200px; height: auto; margin-top: 10px;" /><?php endif; ?>
-                </p>
+                </div>
             </div>
 
             <div class="business-dashboard-tab-content" id="contact-details-tab" style="display:none;">
                 <h3><?php _e( 'Contact Details', 'business-dashboard' ); ?></h3>
-                <p>
+                <div class="form-group">
                     <label for="contact_phone"><?php _e( 'Contact Phone (+Country Code)', 'business-dashboard' ); ?></label>
                     <input type="text" name="contact_phone" id="contact_phone" value="<?php echo esc_attr( $contact_phone ); ?>" />
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="website_url"><?php _e( 'Website URL', 'business-dashboard' ); ?></label>
                     <input type="url" name="website_url" id="website_url" value="<?php echo esc_attr( $website_url ); ?>" />
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="business_address"><?php _e( 'Business Address', 'business-dashboard' ); ?></label>
                     <textarea name="business_address" id="business_address" rows="5"><?php echo esc_textarea( $business_address ); ?></textarea>
-                </p>
+                </div>
             </div>
 
             <div class="business-dashboard-tab-content" id="social-links-tab" style="display:none;">
                 <h3><?php _e( 'Social Links', 'business-dashboard' ); ?></h3>
-                <p>
+                <div class="form-group">
                     <label for="facebook_url"><?php _e( 'Facebook URL', 'business-dashboard' ); ?></label>
                     <input type="url" name="facebook_url" id="facebook_url" value="<?php echo esc_attr( $facebook_url ); ?>" />
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="instagram_url"><?php _e( 'Instagram URL', 'business-dashboard' ); ?></label>
                     <input type="url" name="instagram_url" id="instagram_url" value="<?php echo esc_attr( $instagram_url ); ?>" />
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="linkedin_url"><?php _e( 'LinkedIn URL', 'business-dashboard' ); ?></label>
                     <input type="url" name="linkedin_url" id="linkedin_url" value="<?php echo esc_attr( $linkedin_url ); ?>" />
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="twitter_url"><?php _e( 'X (Twitter) URL', 'business-dashboard' ); ?></label>
                     <input type="url" name="twitter_url" id="twitter_url" value="<?php echo esc_attr( $twitter_url ); ?>" />
-                </p>
+                </div>
             </div>
 
             <div class="business-dashboard-tab-content" id="account-settings-tab" style="display:none;">
                 <h3><?php _e( 'Account Settings', 'business-dashboard' ); ?></h3>
-                <p>
+                <div class="form-group">
                     <label for="user_email_readonly"><?php _e( 'Email', 'business-dashboard' ); ?></label>
                     <input type="email" id="user_email_readonly" value="<?php echo esc_attr( $current_user->user_email ); ?>" readonly />
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <button type="button" id="change-password-button" class="button button-secondary"><?php _e( 'Change Password', 'business-dashboard' ); ?></button>
-                </p>
+                </div>
             </div>
 
             <div class="business-dashboard-tab-content" id="verification-info-tab" style="display:none;">
                 <h3><?php _e( 'Verification Information', 'business-dashboard' ); ?></h3>
-                <p>
+                <div class="form-group">
                     <label for="business_registration_number"><?php _e( 'Business Registration Number', 'business-dashboard' ); ?></label>
                     <input type="text" name="business_registration_number" id="business_registration_number" value="<?php echo esc_attr( $business_registration_number ); ?>" />
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="tax_id"><?php _e( 'Tax ID', 'business-dashboard' ); ?></label>
                     <input type="text" name="tax_id" id="tax_id" value="<?php echo esc_attr( $tax_id ); ?>" />
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <label for="certificate_upload"><?php _e( 'Upload Certificate (PDF/Image)', 'business-dashboard' ); ?></label>
                     <input type="file" name="certificate_upload" id="certificate_upload" accept=".pdf,image/*" />
                     <?php if ( $certificate_upload_url ) : ?><a href="<?php echo esc_url( $certificate_upload_url ); ?>" target="_blank"><?php _e( 'View Current Certificate', 'business-dashboard' ); ?></a><?php endif; ?>
-                </p>
-                <p>
+                </div>
+                <div class="form-group">
                     <button type="button" id="request-verification-button" class="button button-primary" <?php echo ( 'pending' !== $verification_status ) ? 'disabled' : ''; ?>><?php _e( 'Request Verification', 'business-dashboard' ); ?></button>
                     <span id="verification-status-display" style="margin-left: 10px; font-weight: bold;"><?php echo esc_html( ucfirst( $verification_status ) ); ?></span>
-                </p>
+                </div>
             </div>
 
             <p class="submit">

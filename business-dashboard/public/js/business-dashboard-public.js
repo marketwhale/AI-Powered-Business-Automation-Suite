@@ -135,36 +135,42 @@
         // Function to load dashboard section content via AJAX
         function loadDashboardSection(section) {
             var $contentArea = $('#business-dashboard-content-area');
-            $contentArea.html('<div class="business-dashboard-loading">' + business_dashboard_public_vars.loading_text + '</div>'); // Show loading indicator
+            $contentArea.addClass('fade-out'); // Start fade-out animation
 
-            $.ajax({
-                url: business_dashboard_public_vars.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'business_dashboard_load_section',
-                    section: section,
-                    nonce: business_dashboard_public_vars.dashboard_nonce
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $contentArea.html(response.data.content);
-                        // Re-initialize any scripts or event listeners for the new content if necessary
-                        // For now, the existing sync form handler is delegated, so it should work.
-                        if (section === 'settings') {
-                            initProfileSettingsTabs();
-                            initProfileSettingsForm();
-                            initChangePasswordModal();
-                            initVerificationInfo();
+            setTimeout(function() { // Wait for fade-out to complete
+                $contentArea.html('<div class="business-dashboard-loading">' + business_dashboard_public_vars.loading_text + '</div>'); // Show loading indicator
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'business_dashboard_load_section',
+                        section: section,
+                        nonce: business_dashboard_public_vars.dashboard_nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $contentArea.html(response.data.content);
+                            $contentArea.removeClass('fade-out').addClass('fade-in'); // Fade in new content
+                            // Re-initialize any scripts or event listeners for the new content if necessary
+                            if (section === 'settings') {
+                                initProfileSettingsTabs();
+                                initProfileSettingsForm();
+                                initChangePasswordModal();
+                                initVerificationInfo();
+                            }
+                        } else {
+                            $contentArea.html('<p class="business-dashboard-error">' + response.data + '</p>');
+                            $contentArea.removeClass('fade-out').addClass('fade-in'); // Fade in error message
                         }
-                    } else {
-                        $contentArea.html('<p class="business-dashboard-error">' + response.data + '</p>');
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error loading section:', textStatus, errorThrown, jqXHR.responseText);
+                        $contentArea.html('<p class="business-dashboard-error">' + 'Failed to load section. Please try again.' + '</p>');
+                        $contentArea.removeClass('fade-out').addClass('fade-in'); // Fade in error message
                     }
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    console.error('AJAX Error loading section:', textStatus, errorThrown, jqXHR.responseText);
-                    $contentArea.html('<p class="business-dashboard-error">' + 'Failed to load section. Please try again.' + '</p>');
-                }
-            });
+                });
+            }, 300); // Match CSS transition duration
         }
 
         // Handle browser back/forward buttons

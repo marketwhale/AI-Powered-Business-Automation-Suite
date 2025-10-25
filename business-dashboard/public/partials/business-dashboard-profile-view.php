@@ -77,7 +77,8 @@ if ( 'verified' === $verification_status ) {
             <?php
             $current_tab = isset( $_GET['tab'] ) ? $_GET['tab'] : 'synced-products';
             if ( 'synced-products' === $current_tab ) {
-                echo $this->display_synced_products( $current_user->ID ); // Assuming this method exists in Business_Dashboard_Public
+                // Assuming display_synced_products outputs the table directly
+                echo $this->display_synced_products( $current_user->ID );
             } elseif ( 'product-gallery' === $current_tab ) {
                 require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-product-gallery-grid.php';
             }
