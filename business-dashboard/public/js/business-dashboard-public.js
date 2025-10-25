@@ -135,9 +135,10 @@
         // Function to load dashboard section content via AJAX
         function loadDashboardSection(section) {
             var $contentArea = $('#business-dashboard-content-area');
-            $contentArea.addClass('fade-out'); // Start fade-out animation
+            $contentArea.addClass('fade-out').removeClass('fade-in').addClass('initial-hidden-state'); // Start fade-out animation and prepare for fade-in
 
             setTimeout(function() { // Wait for fade-out to complete
+                $contentArea.removeClass('fade-out'); // Remove fade-out class
                 $contentArea.html('<div class="business-dashboard-loading">' + business_dashboard_public_vars.loading_text + '</div>'); // Show loading indicator
 
                 $.ajax({
@@ -151,7 +152,7 @@
                     success: function(response) {
                         if (response.success) {
                             $contentArea.html(response.data.content);
-                            $contentArea.removeClass('fade-out').addClass('fade-in'); // Fade in new content
+                            $contentArea.removeClass('initial-hidden-state').addClass('fade-in'); // Fade in new content
                             // Re-initialize any scripts or event listeners for the new content if necessary
                             if (section === 'settings') {
                                 initProfileSettingsTabs();
@@ -161,13 +162,13 @@
                             }
                         } else {
                             $contentArea.html('<p class="business-dashboard-error">' + response.data + '</p>');
-                            $contentArea.removeClass('fade-out').addClass('fade-in'); // Fade in error message
+                            $contentArea.removeClass('initial-hidden-state').addClass('fade-in'); // Fade in error message
                         }
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         console.error('AJAX Error loading section:', textStatus, errorThrown, jqXHR.responseText);
                         $contentArea.html('<p class="business-dashboard-error">' + 'Failed to load section. Please try again.' + '</p>');
-                        $contentArea.removeClass('fade-out').addClass('fade-in'); // Fade in error message
+                        $contentArea.removeClass('initial-hidden-state').addClass('fade-in'); // Fade in error message
                     }
                 });
             }, 300); // Match CSS transition duration

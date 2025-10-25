@@ -793,6 +793,11 @@ body.business-dashboard-page {
     transition: opacity 0.3s ease-in, transform 0.3s ease-in;
 }
 
+.business-dashboard-content-area.initial-hidden-state {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
 /* --- Responsive Adjustments --- */
 @media (max-width: 768px) {
     .business-dashboard-layout {
