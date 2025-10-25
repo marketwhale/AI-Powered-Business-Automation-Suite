@@ -358,48 +358,9 @@ class Business_Dashboard_Public {
         $current_user = get_userdata( $user_id ); // Re-fetch user data for consistency
         if ( 'profile' === $section ) {
             require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-profile-view.php';
-        } elseif ( 'product-sync' === $section ) { ?>
-            <!-- Product Sync Section -->
-            <div class="business-dashboard-section">
-                <h2><?php _e( 'Product Sync', 'business-dashboard' ); ?></h2>
-                <form method="post" class="business-dashboard-sync-form">
-                    <div class="form-group">
-                        <label for="sync_url"><?php _e( 'External Website URL', 'business-dashboard' ); ?></label>
-                        <input type="url" name="sync_url" id="sync_url" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'sync_url', true ) ); ?>" class="regular-text" />
-                    </div>
-                    <div class="form-group">
-                        <label for="api_key"><?php _e( 'Consumer Key (if required)', 'business-dashboard' ); ?></label>
-                        <input type="text" name="api_key" id="api_key" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'api_key', true ) ); ?>" class="regular-text" />
-                    </div>
-                    <div class="form-group">
-                        <label for="consumer_secret"><?php _e( 'Consumer Secret (if required)', 'business-dashboard' ); ?></label>
-                        <input type="text" name="consumer_secret" id="consumer_secret" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'consumer_secret', true ) ); ?>" class="regular-text" />
-                    </div>
-                    <div class="form-group">
-                        <label for="data_source_type"><?php _e( 'Data Source Type', 'business-dashboard' ); ?></label>
-                        <select name="data_source_type" id="data_source_type">
-                            <option value="json" <?php selected( get_user_meta( $current_user->ID, 'data_source_type', true ), 'json' ); ?>><?php _e( 'JSON REST API', 'business-dashboard' ); ?></option>
-                            <option value="csv" <?php selected( get_user_meta( $current_user->ID, 'data_source_type', true ), 'csv' ); ?>><?php _e( 'CSV Feed', 'business-dashboard' ); ?></option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <input type="submit" name="sync_products_manual" value="<?php _e( 'Sync Now', 'business-dashboard' ); ?>" class="button button-primary" />
-                    </div>
-                    <?php wp_nonce_field( 'business_product_sync_action', 'business_product_sync_nonce' ); ?>
-                </form>
-
-                <h3><?php _e( 'Synced Products', 'business-dashboard' ); ?></h3>
-                <p><?php _e( 'Last Sync:', 'business-dashboard' ); ?> <span id="last-sync-date"><?php echo esc_html( get_user_meta( $current_user->ID, 'last_sync_date', true ) ); ?></span></p>
-                <div id="synced-product-list">
-                    <?php echo $this->display_synced_products( $current_user->ID ); ?>
-                </div>
-
-                <h3><?php _e( 'Sync Logs', 'business-dashboard' ); ?></h3>
-                <div id="sync-logs-display">
-                    <?php echo $this->display_sync_logs( $current_user->ID ); ?>
-                </div>
-            </div>
-        <?php } elseif ( 'post-creation' === $section ) {
+        } elseif ( 'product-sync' === $section ) {
+            require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-product-sync-section.php';
+        } elseif ( 'post-creation' === $section ) {
             require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-post-creation.php';
         } elseif ( 'settings' === $section ) {
             require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-profile-settings.php';
@@ -438,6 +399,86 @@ class Business_Dashboard_Public {
     }
 
     /**
+     * AJAX handler for retrying a failed sync log.
+     *
+     * @since    1.0.0
+     */
+    public function ajax_retry_sync_log() {
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to perform this action.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'business_product_sync_action' ) ) {
+            wp_send_json_error( __( 'Nonce verification failed.', 'business-dashboard' ) );
+        }
+
+        $log_index = isset( $_POST['log_id'] ) ? absint( $_POST['log_id'] ) : -1;
+        $logs = get_user_meta( $current_user_id, 'business_dashboard_sync_logs', true );
+
+        if ( ! is_array( $logs ) || ! isset( $logs[ $log_index ] ) ) {
+            wp_send_json_error( __( 'Invalid sync log ID.', 'business-dashboard' ) );
+        }
+
+        $log_entry = $logs[ $log_index ];
+
+        // For simplicity, we'll re-run the last successful sync parameters if available
+        // In a real-world scenario, you might store the original sync parameters in the log entry
+        $base_sync_url = get_user_meta( $current_user_id, 'sync_url', true );
+        $api_key = get_user_meta( $current_user_id, 'api_key', true );
+        $consumer_secret = get_user_meta( $current_user_id, 'consumer_secret', true );
+        $data_source_type = get_user_meta( $current_user_id, 'data_source_type', true );
+
+        if ( empty( $base_sync_url ) ) {
+            wp_send_json_error( __( 'Product sync URL is not set for retry.', 'business-dashboard' ) );
+        }
+
+        $sync_url = $this->get_woocommerce_api_endpoint( $base_sync_url );
+        $sync_result = $this->perform_product_sync( $current_user_id, $sync_url, $api_key, $consumer_secret, $data_source_type );
+
+        if ( is_wp_error( $sync_result ) ) {
+            wp_send_json_error( $sync_result->get_error_message() );
+        } else {
+            // Update the original log entry status to 'retried' or similar, or just let a new log entry be created
+            // For now, we'll just create a new log entry and let the UI refresh
+            wp_send_json_success( __( 'Sync log retried successfully!', 'business-dashboard' ) );
+        }
+    }
+
+    /**
+     * AJAX handler for deleting a sync log entry.
+     *
+     * @since    1.0.0
+     */
+    public function ajax_delete_sync_log() {
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to perform this action.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'business_product_sync_action' ) ) {
+            wp_send_json_error( __( 'Nonce verification failed.', 'business-dashboard' ) );
+        }
+
+        $log_index = isset( $_POST['log_id'] ) ? absint( $_POST['log_id'] ) : -1;
+        $logs = get_user_meta( $current_user_id, 'business_dashboard_sync_logs', true );
+
+        if ( ! is_array( $logs ) || ! isset( $logs[ $log_index ] ) ) {
+            wp_send_json_error( __( 'Invalid sync log ID.', 'business-dashboard' ) );
+        }
+
+        // Remove the log entry
+        unset( $logs[ $log_index ] );
+        $logs = array_values( $logs ); // Re-index the array
+
+        update_user_meta( $current_user_id, 'business_dashboard_sync_logs', $logs );
+
+        wp_send_json_success( __( 'Sync log deleted successfully!', 'business-dashboard' ) );
+    }
+
+    /**
      * Display synced products for a business user.
      *
      * @since    1.0.0
@@ -464,26 +505,27 @@ class Business_Dashboard_Public {
         $products = new WP_Query( $args );
         ob_start();
         if ( $products->have_posts() ) : ?>
-            <table class="wp-list-table widefat fixed striped">
+            <table class="business-dashboard-synced-products-list">
                 <thead>
                     <tr>
                         <th><?php _e( 'Image', 'business-dashboard' ); ?></th>
                         <th><?php _e( 'Name', 'business-dashboard' ); ?></th>
-                        <th><?php _e( 'SKU', 'business-dashboard' ); ?></th>
                         <th><?php _e( 'Price', 'business-dashboard' ); ?></th>
                         <th><?php _e( 'Stock', 'business-dashboard' ); ?></th>
+                        <th><?php _e( 'Last Synced', 'business-dashboard' ); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php while ( $products->have_posts() ) : $products->the_post();
                         $_product = wc_get_product( get_the_ID() );
+                        $last_synced_timestamp = get_post_meta( get_the_ID(), '_last_synced_timestamp', true );
                         ?>
                         <tr>
                             <td><?php echo $_product->get_image( 'thumbnail' ); ?></td>
                             <td><a href="<?php echo esc_url( get_edit_post_link( get_the_ID() ) ); ?>" target="_blank"><?php echo esc_html( $_product->get_name() ); ?></a></td>
-                            <td><?php echo esc_html( $_product->get_sku() ); ?></td>
                             <td><?php echo wp_kses_post( $_product->get_price_html() ); ?></td>
                             <td><?php echo esc_html( $_product->get_stock_quantity() ); ?></td>
+                            <td><?php echo esc_html( $last_synced_timestamp ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $last_synced_timestamp ) ) : __( 'N/A', 'business-dashboard' ) ); ?></td>
                         </tr>
                     <?php endwhile; ?>
                 </tbody>
@@ -502,15 +544,42 @@ class Business_Dashboard_Public {
      * @param    int    $user_id    The business user ID.
      * @return   string   HTML content for the sync logs.
      */
-    private function display_sync_logs( $user_id ) {
+    public function display_sync_logs( $user_id ) {
         $logs = get_user_meta( $user_id, 'business_dashboard_sync_logs', true );
         if ( ! is_array( $logs ) ) {
             $logs = array();
         }
-        $logs[] = $log_entry;
-        // Keep only the last 10 logs to prevent meta bloat
-        $logs = array_slice( $logs, -10 );
-        update_user_meta( $user_id, 'business_dashboard_sync_logs', $logs );
+        ob_start();
+        if ( ! empty( $logs ) ) : ?>
+            <table class="business-dashboard-sync-logs-list">
+                <thead>
+                    <tr>
+                        <th><?php _e( 'Last Sync Time', 'business-dashboard' ); ?></th>
+                        <th><?php _e( 'Status', 'business-dashboard' ); ?></th>
+                        <th><?php _e( 'Message', 'business-dashboard' ); ?></th>
+                        <th><?php _e( 'Actions', 'business-dashboard' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( array_reverse( $logs ) as $index => $log_entry ) : // Display most recent first ?>
+                        <tr>
+                            <td><?php echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $log_entry['timestamp'] ) ) ); ?></td>
+                            <td class="status-<?php echo esc_attr( $log_entry['status'] ); ?>"><?php echo esc_html( ucfirst( $log_entry['status'] ) ); ?></td>
+                            <td><?php echo esc_html( $log_entry['message'] ); ?></td>
+                            <td class="actions">
+                                <?php if ( 'failed' === $log_entry['status'] ) : ?>
+                                    <button class="retry-button button button-secondary" data-log-id="<?php echo count( $logs ) - 1 - $index; ?>"><?php _e( 'Retry', 'business-dashboard' ); ?></button>
+                                <?php endif; ?>
+                                <button class="delete-button button button-secondary" data-log-id="<?php echo count( $logs ) - 1 - $index; ?>"><?php _e( 'Delete', 'business-dashboard' ); ?></button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else : ?>
+            <p><?php _e( 'No sync logs available.', 'business-dashboard' ); ?></p>
+        <?php endif;
+        return ob_get_clean();
     }
 
     /**
@@ -930,8 +999,9 @@ class Business_Dashboard_Public {
 
         $product->save();
 
-        // Link product to business user
+        // Link product to business user and update last synced timestamp
         update_post_meta( $product->get_id(), '_business_user_id', $user_id );
+        update_post_meta( $product->get_id(), '_last_synced_timestamp', current_time( 'mysql' ) );
         return true;
     }
 

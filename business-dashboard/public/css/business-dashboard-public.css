@@ -578,12 +578,122 @@ body.business-dashboard-page {
 }
 
 /* --- Product Grid Styles (for Synced Products & Product Gallery) --- */
-.business-dashboard-product-gallery-grid,
-.business-dashboard-synced-products-grid { /* Apply to both grids */
+.business-dashboard-product-gallery-grid { /* Apply to both grids */
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* Responsive 5 columns desktop */
     gap: 25px;
     padding: 20px;
+}
+
+/* Specific styles for Synced Products List */
+.business-dashboard-synced-products-list {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.business-dashboard-synced-products-list th,
+.business-dashboard-synced-products-list td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.business-dashboard-synced-products-list th {
+    background-color: var(--bg-light);
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.business-dashboard-synced-products-list tbody tr:hover {
+    background-color: #f8f8f8;
+    transition: background-color var(--transition-speed) ease;
+}
+
+.business-dashboard-synced-products-list img {
+    max-width: 50px;
+    height: auto;
+    border-radius: var(--border-radius-small);
+}
+
+/* Specific styles for Sync Logs List */
+.business-dashboard-sync-logs-list {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.business-dashboard-sync-logs-list th,
+.business-dashboard-sync-logs-list td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.business-dashboard-sync-logs-list th {
+    background-color: var(--bg-light);
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.business-dashboard-sync-logs-list tbody tr:hover {
+    background-color: #f8f8f8;
+    transition: background-color var(--transition-speed) ease;
+}
+
+.business-dashboard-sync-logs-list .status-success {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.business-dashboard-sync-logs-list .status-error {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.business-dashboard-sync-logs-list .actions button {
+    margin-right: 5px;
+    padding: 6px 12px;
+    border-radius: var(--border-radius-small);
+    cursor: pointer;
+    transition: all var(--transition-speed) ease;
+}
+
+.business-dashboard-sync-logs-list .actions .retry-button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+}
+
+.business-dashboard-sync-logs-list .actions .retry-button:hover {
+    background-color: #0056b3;
+}
+
+.business-dashboard-sync-logs-list .actions .delete-button {
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+}
+
+.business-dashboard-sync-logs-list .actions .delete-button:hover {
+    background-color: #c82333;
+}
+
+/* Pulse animation for Sync Products Now button */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(106, 130, 251, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(106, 130, 251, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(106, 130, 251, 0);
+    }
+}
+
+#sync-products-manual-button.pulsing {
+    animation: pulse 1.5s infinite;
 }
 
 .business-dashboard-grid-card {

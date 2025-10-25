@@ -159,6 +159,9 @@
                                 initProfileSettingsForm();
                                 initChangePasswordModal();
                                 initVerificationInfo();
+                            } else if (section === 'product-sync') {
+                                initProductSyncTabs();
+                                initProductSyncForm();
                             }
                         } else {
                             $contentArea.html('<p class="business-dashboard-error">' + response.data + '</p>');
@@ -199,69 +202,30 @@
             initProfileSettingsForm();
             initChangePasswordModal();
             initVerificationInfo();
+        } else if (initialSection === 'product-sync') {
+            initProductSyncTabs();
+            initProductSyncForm();
         }
-
-        // Handle manual product sync via AJAX
-        $(document).on('submit', '.business-dashboard-section form', function(e) {
-            if ($(this).find('input[name="sync_products_manual"]').length) {
-                e.preventDefault();
-
-                var $form = $(this);
-                var $submitButton = $form.find('input[name="sync_products_manual"]');
-                var originalButtonText = $submitButton.val();
-                var formData = $form.serialize();
-
-                // Add nonce to form data
-                formData += '&action=business_dashboard_manual_product_sync';
-
-                // Display loading state
-                $submitButton.val('Syncing...').prop('disabled', true);
-                $form.find('.business-dashboard-message').remove(); // Clear previous messages
-
-                $.ajax({
-                    url: business_dashboard_public_vars.ajax_url,
-                    type: 'POST',
-                    data: formData,
-                    success: function(response) {
-                        if (response.success) {
-                            $form.prepend('<p class="business-dashboard-success business-dashboard-message">' + response.data.message + '</p>');
-                            $('#last-sync-date').text(response.data.last_sync);
-                            $('#synced-product-list').html(response.data.product_list);
-                            $('#sync-logs-display').html(response.data.sync_logs);
-                        } else {
-                            $form.prepend('<p class="business-dashboard-error business-dashboard-message">' + response.data + '</p>');
-                        }
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        console.error('AJAX Error:', textStatus, errorThrown, jqXHR.responseText);
-                        $form.prepend('<p class="business-dashboard-error business-dashboard-message">' + 'An unexpected error occurred. Please check console for details.' + '</p>');
-                    },
-                    complete: function() {
-                        $submitButton.val(originalButtonText).prop('disabled', false);
-                    }
-                });
-            }
-        });
 
         // --- New Functionality for Business Profile Settings ---
 
         // Initialize tabs for profile settings
         function initProfileSettingsTabs() {
-            $(document).off('click', '.business-dashboard-tabs-wrap .nav-tab').on('click', '.business-dashboard-tabs-wrap .nav-tab', function(e) {
+            $(document).off('click', '.business-dashboard-profile-settings-page .nav-tab-wrapper .nav-tab').on('click', '.business-dashboard-profile-settings-page .nav-tab-wrapper .nav-tab', function(e) {
                 e.preventDefault();
                 var $this = $(this);
                 var targetTab = $this.data('tab');
 
-                $('.business-dashboard-tabs-wrap .nav-tab').removeClass('nav-tab-active');
+                $('.business-dashboard-profile-settings-page .nav-tab-wrapper .nav-tab').removeClass('nav-tab-active');
                 $this.addClass('nav-tab-active');
 
-                $('.business-dashboard-tab-content').hide();
+                $('.business-dashboard-profile-settings-page .business-dashboard-tab-content').hide();
                 $('#' + targetTab + '-tab').show();
             });
 
             // Set initial active tab
             var initialTab = new URLSearchParams(window.location.hash.substring(1)).get('tab') || 'business-info';
-            $('.business-dashboard-tabs-wrap .nav-tab[data-tab="' + initialTab + '"]').click();
+            $('.business-dashboard-profile-settings-page .nav-tab-wrapper .nav-tab[data-tab="' + initialTab + '"]').click();
         }
 
         // Handle profile settings form submission
@@ -279,7 +243,7 @@
 
                 var formData = new FormData(this);
                 formData.append('action', 'business_dashboard_update_profile_settings');
-                formData.append('nonce', business_dashboard_public_vars.profile_settings_nonce);
+                formData.append('nonce', business_dashboard_public_vars.nonce); // Using general nonce for now, can create specific if needed
 
                 $.ajax({
                     url: business_dashboard_public_vars.ajax_url,
@@ -361,12 +325,12 @@
                 $.ajax({
                     url: business_dashboard_public_vars.ajax_url,
                     type: 'POST',
-                    data: {
-                        action: 'business_dashboard_change_password',
-                        current_password: currentPassword,
-                        new_password: newPassword,
-                        nonce: business_dashboard_public_vars.change_password_nonce
-                    },
+                data: {
+                    action: 'business_dashboard_change_password',
+                    current_password: currentPassword,
+                    new_password: newPassword,
+                    nonce: business_dashboard_public_vars.nonce // Using general nonce for now, can create specific if needed
+                },
                     success: function(response) {
                         if (response.success) {
                             $passwordChangeFeedback.addClass('business-dashboard-success').text(response.data);
@@ -427,7 +391,7 @@
                     type: 'POST',
                     data: {
                         action: 'business_dashboard_request_verification',
-                        nonce: business_dashboard_public_vars.request_verification_nonce
+                        nonce: business_dashboard_public_vars.nonce // Using general nonce for now, can create specific if needed
                     },
                     success: function(response) {
                         if (response.success) {
@@ -444,6 +408,150 @@
                     complete: function() {
                         $thisButton.text(originalButtonText).prop('disabled', false).removeClass('loading');
                         checkVerificationFields(); // Re-check status
+                    }
+                });
+            });
+        }
+
+        // --- New Functionality for Product Sync Section ---
+
+        // Initialize tabs for product sync
+        function initProductSyncTabs() {
+            $(document).off('click', '.business-dashboard-product-sync-section .nav-tab-wrapper .nav-tab').on('click', '.business-dashboard-product-sync-section .nav-tab-wrapper .nav-tab', function(e) {
+                e.preventDefault();
+                var $this = $(this);
+                var targetTab = $this.data('tab');
+
+                $('.business-dashboard-product-sync-section .nav-tab-wrapper .nav-tab').removeClass('nav-tab-active');
+                $this.addClass('nav-tab-active');
+
+                $('.business-dashboard-product-sync-section .business-dashboard-tab-content').hide();
+                $('#' + targetTab + '-tab').show();
+            });
+
+            // Set initial active tab
+            var initialTab = new URLSearchParams(window.location.hash.substring(1)).get('tab') || 'sync-settings';
+            $('.business-dashboard-product-sync-section .nav-tab-wrapper .nav-tab[data-tab="' + initialTab + '"]').click();
+        }
+
+        // Handle product sync form submission
+        function initProductSyncForm() {
+            $(document).off('submit', '#business-product-sync-form').on('submit', '#business-product-sync-form', function(e) {
+                e.preventDefault();
+
+                var $form = $(this);
+                var $submitButton = $('#sync-products-manual-button');
+                var $feedbackArea = $('#sync-feedback');
+                var originalButtonText = $submitButton.text();
+
+                $submitButton.text('Syncing...').prop('disabled', true).addClass('loading pulsing');
+                $feedbackArea.empty().removeClass('business-dashboard-success business-dashboard-error');
+
+                var formData = new FormData(this);
+                formData.append('action', 'business_dashboard_manual_product_sync');
+                formData.append('nonce', business_dashboard_public_vars.nonce); // Using general nonce for now, can create specific if needed
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            $feedbackArea.addClass('business-dashboard-success').text(response.data.message);
+                            $('#last-sync-date').text(response.data.last_sync);
+                            $('#synced-product-list').html(response.data.product_list);
+                            $('#sync-logs-display').html(response.data.sync_logs);
+                            // Trigger glowing animation
+                            $submitButton.addClass('glowing-success');
+                            setTimeout(function() {
+                                $submitButton.removeClass('glowing-success');
+                            }, 2000); // Remove class after 2 seconds
+                        } else {
+                            $feedbackArea.addClass('business-dashboard-error').text(response.data);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error syncing products:', textStatus, errorThrown, jqXHR.responseText);
+                        $feedbackArea.addClass('business-dashboard-error').text('An unexpected error occurred. Please try again.');
+                    },
+                    complete: function() {
+                        $submitButton.text(originalButtonText).prop('disabled', false).removeClass('loading pulsing');
+                    }
+                });
+            });
+
+            // Handle Retry button click for sync logs
+            $(document).off('click', '.business-dashboard-sync-logs-list .retry-button').on('click', '.business-dashboard-sync-logs-list .retry-button', function() {
+                var $thisButton = $(this);
+                var logId = $thisButton.data('log-id'); // Assuming log-id is stored in data attribute
+                var originalButtonText = $thisButton.text();
+
+                $thisButton.text('Retrying...').prop('disabled', true).addClass('loading');
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'business_dashboard_retry_sync_log',
+                        log_id: logId,
+                        nonce: business_dashboard_public_vars.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Sync log retried successfully!'); // Replace with better UI feedback
+                            // Reload sync logs or update specific log entry
+                            loadDashboardSection('product-sync'); // Reload entire section for simplicity
+                        } else {
+                            alert('Error retrying sync log: ' + response.data);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error retrying sync log:', textStatus, errorThrown, jqXHR.responseText);
+                        alert('An unexpected error occurred while retrying sync log.');
+                    },
+                    complete: function() {
+                        $thisButton.text(originalButtonText).prop('disabled', false).removeClass('loading');
+                    }
+                });
+            });
+
+            // Handle Delete button click for sync logs
+            $(document).off('click', '.business-dashboard-sync-logs-list .delete-button').on('click', '.business-dashboard-sync-logs-list .delete-button', function() {
+                if (!confirm('Are you sure you want to delete this sync log?')) {
+                    return;
+                }
+
+                var $thisButton = $(this);
+                var logId = $thisButton.data('log-id'); // Assuming log-id is stored in data attribute
+                var originalButtonText = $thisButton.text();
+
+                $thisButton.text('Deleting...').prop('disabled', true).addClass('loading');
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'business_dashboard_delete_sync_log',
+                        log_id: logId,
+                        nonce: business_dashboard_public_vars.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Sync log deleted successfully!'); // Replace with better UI feedback
+                            // Reload sync logs or remove specific log entry from DOM
+                            loadDashboardSection('product-sync'); // Reload entire section for simplicity
+                        } else {
+                            alert('Error deleting sync log: ' + response.data);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error deleting sync log:', textStatus, errorThrown, jqXHR.responseText);
+                        alert('An unexpected error occurred while deleting sync log.');
+                    },
+                    complete: function() {
+                        $thisButton.text(originalButtonText).prop('disabled', false).removeClass('loading');
                     }
                 });
             });
