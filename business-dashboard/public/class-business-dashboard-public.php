@@ -333,6 +333,7 @@ class Business_Dashboard_Public {
                         <li><a href="?section=profile" class="business-dashboard-nav-link <?php echo 'profile' === $current_section ? 'active' : ''; ?>" data-section="profile"><?php _e( 'Business Profile', 'business-dashboard' ); ?></a></li>
                         <li><a href="?section=product-sync" class="business-dashboard-nav-link <?php echo 'product-sync' === $current_section ? 'active' : ''; ?>" data-section="product-sync"><?php _e( 'Product Sync', 'business-dashboard' ); ?></a></li>
                         <li><a href="?section=post-creation" class="business-dashboard-nav-link <?php echo 'post-creation' === $current_section ? 'active' : ''; ?>" data-section="post-creation"><?php _e( 'Business Post Creation', 'business-dashboard' ); ?></a></li>
+                        <li><a href="?section=settings" class="business-dashboard-nav-link <?php echo 'settings' === $current_section ? 'active' : ''; ?>" data-section="settings"><?php _e( 'Business Profile Settings', 'business-dashboard' ); ?></a></li>
                         <li><a href="<?php echo esc_url( wp_logout_url( home_url() ) ); ?>" class="business-dashboard-nav-link"><?php _e( 'Logout', 'business-dashboard' ); ?></a></li>
                     </ul>
                 </div>
@@ -400,6 +401,8 @@ class Business_Dashboard_Public {
             </div>
         <?php } elseif ( 'post-creation' === $section ) {
             require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-post-creation.php';
+        } elseif ( 'settings' === $section ) {
+            require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-profile-settings.php';
         }
     }
 
@@ -546,7 +549,119 @@ class Business_Dashboard_Public {
     }
 
     /**
-     * Manually trigger product sync for a business.
+     * Process business profile settings update from the dashboard.
+     *
+     * @since    1.0.0
+     * @param    int    $user_id    The user ID.
+     */
+    public function process_business_profile_settings_update( $user_id ) {
+        if ( ! current_user_can( 'edit_user', $user_id ) ) {
+            return new WP_Error( 'permission_denied', __( 'You do not have permission to edit this profile.', 'business-dashboard' ) );
+        }
+
+        // Verify nonce
+        if ( ! isset( $_POST['business_profile_settings_nonce'] ) || ! wp_verify_nonce( $_POST['business_profile_settings_nonce'], 'business_profile_settings_action' ) ) {
+            return new WP_Error( 'nonce_failed', __( 'Nonce verification failed.', 'business-dashboard' ) );
+        }
+
+        $fields_to_update = array(
+            'business_name'             => sanitize_text_field( $_POST['business_name'] ),
+            'country'                   => sanitize_text_field( $_POST['country'] ),
+            'business_type'             => sanitize_text_field( $_POST['business_type'] ),
+            'industry'                  => sanitize_text_field( $_POST['industry'] ),
+            'established_year'          => absint( $_POST['established_year'] ),
+            'business_description'      => sanitize_textarea_field( $_POST['business_description'] ), // Short description
+            'full_description'          => sanitize_textarea_field( $_POST['full_description'] ),
+            'contact_phone'             => sanitize_text_field( $_POST['contact_phone'] ),
+            'website_url'               => esc_url_raw( $_POST['website_url'] ),
+            'business_address'          => sanitize_textarea_field( $_POST['business_address'] ),
+            'facebook_url'              => esc_url_raw( $_POST['facebook_url'] ),
+            'instagram_url'             => esc_url_raw( $_POST['instagram_url'] ),
+            'linkedin_url'              => esc_url_raw( $_POST['linkedin_url'] ),
+            'twitter_url'               => esc_url_raw( $_POST['twitter_url'] ),
+            'business_registration_number' => sanitize_text_field( $_POST['business_registration_number'] ),
+            'tax_id'                    => sanitize_text_field( $_POST['tax_id'] ),
+        );
+
+        foreach ( $fields_to_update as $meta_key => $meta_value ) {
+            update_user_meta( $user_id, $meta_key, $meta_value );
+        }
+
+        // Handle image uploads for profile and cover images
+        $this->handle_image_upload( $user_id, 'profile_image', 'profile_image' );
+        $this->handle_image_upload( $user_id, 'cover_image', 'cover_image' );
+
+        // Handle certificate upload
+        if ( ! empty( $_FILES['certificate_upload']['name'] ) ) {
+            $certificate_upload_result = $this->handle_file_upload( $user_id, 'certificate_upload', 'certificate_upload', array('pdf', 'jpg', 'jpeg', 'png') );
+            if ( is_wp_error( $certificate_upload_result ) ) {
+                return $certificate_upload_result;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * AJAX handler for updating business profile settings.
+     *
+     * @since    1.0.0
+     */
+    public function ajax_update_business_profile_settings() {
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to perform this action.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+        $update_result = $this->process_business_profile_settings_update( $current_user_id );
+
+        if ( is_wp_error( $update_result ) ) {
+            wp_send_json_error( $update_result->get_error_message() );
+        } else {
+            wp_send_json_success( __( 'Profile settings updated successfully!', 'business-dashboard' ) );
+        }
+    }
+
+    /**
+     * Handle generic file uploads for user meta.
+     *
+     * @since    1.0.0
+     * @param    int    $user_id    The user ID.
+     * @param    string $file_input_name The name of the file input field.
+     * @param    string $meta_key  The meta key to save the file URL.
+     * @param    array  $allowed_exts Allowed file extensions.
+     * @return   string|WP_Error    File URL on success, WP_Error on failure.
+     */
+    private function handle_file_upload( $user_id, $file_input_name, $meta_key, $allowed_exts = array() ) {
+        if ( ! function_exists( 'wp_handle_upload' ) ) {
+            require_once( ABSPATH . 'wp-admin/includes/file.php' );
+        }
+
+        if ( ! empty( $_FILES[ $file_input_name ]['name'] ) ) {
+            $uploaded_file = $_FILES[ $file_input_name ];
+            $upload_overrides = array( 'test_form' => false );
+
+            // Check file type
+            $file_info = wp_check_filetype( basename( $uploaded_file['name'] ) );
+            if ( ! empty( $allowed_exts ) && ! in_array( $file_info['ext'], $allowed_exts ) ) {
+                return new WP_Error( 'invalid_file_type', sprintf( __( 'Invalid file type. Allowed types: %s', 'business-dashboard' ), implode( ', ', $allowed_exts ) ) );
+            }
+
+            $move_file = wp_handle_upload( $uploaded_file, $upload_overrides );
+
+            if ( $move_file && ! isset( $move_file['error'] ) ) {
+                update_user_meta( $user_id, $meta_key, $move_file['url'] );
+                return $move_file['url'];
+            } else {
+                error_log( 'Business Dashboard File Upload Error: ' . $move_file['error'] );
+                return new WP_Error( 'upload_error', __( 'Failed to upload file.', 'business-dashboard' ) . ' ' . $move_file['error'] );
+            }
+        }
+        return new WP_Error( 'no_file_uploaded', __( 'No file uploaded.', 'business-dashboard' ) );
+    }
+
+    /**
+     * AJAX handler for manual product sync.
      *
      * @since    1.0.0
      */
@@ -818,6 +933,80 @@ class Business_Dashboard_Public {
         // Link product to business user
         update_post_meta( $product->get_id(), '_business_user_id', $user_id );
         return true;
+    }
+
+    /**
+     * AJAX handler for changing password.
+     *
+     * @since    1.0.0
+     */
+    public function ajax_change_password() {
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to change your password.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'business_change_password_action' ) ) {
+            wp_send_json_error( __( 'Nonce verification failed.', 'business-dashboard' ) );
+        }
+
+        $current_password = isset( $_POST['current_password'] ) ? $_POST['current_password'] : '';
+        $new_password = isset( $_POST['new_password'] ) ? $_POST['new_password'] : '';
+
+        if ( empty( $current_password ) || empty( $new_password ) ) {
+            wp_send_json_error( __( 'Current and new passwords are required.', 'business-dashboard' ) );
+        }
+
+        if ( ! wp_check_password( $current_password, $current_user->user_pass, $current_user_id ) ) {
+            wp_send_json_error( __( 'Your current password is incorrect.', 'business-dashboard' ) );
+        }
+
+        wp_set_password( $new_password, $current_user_id );
+        wp_send_json_success( __( 'Password changed successfully!', 'business-dashboard' ) );
+    }
+
+    /**
+     * AJAX handler for requesting business verification.
+     *
+     * @since    1.0.0
+     */
+    public function ajax_request_verification() {
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to request verification.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'business_request_verification_action' ) ) {
+            wp_send_json_error( __( 'Nonce verification failed.', 'business-dashboard' ) );
+        }
+
+        // Check if all required verification fields are filled
+        $business_registration_number = get_user_meta( $current_user_id, 'business_registration_number', true );
+        $tax_id = get_user_meta( $current_user_id, 'tax_id', true );
+        $certificate_upload_url = get_user_meta( $current_user_id, 'certificate_upload', true );
+
+        if ( empty( $business_registration_number ) || empty( $tax_id ) || empty( $certificate_upload_url ) ) {
+            wp_send_json_error( __( 'Please fill in all verification information (Registration Number, Tax ID, and upload Certificate) before requesting verification.', 'business-dashboard' ) );
+        }
+
+        // Update verification status to pending
+        update_user_meta( $current_user_id, 'verification_status', 'pending' );
+
+        // Optionally, notify admin
+        $admin_email = get_option( 'admin_email' );
+        $user_info = get_userdata( $current_user_id );
+        $subject = __( 'Business Verification Request', 'business-dashboard' );
+        $message = sprintf(
+            __( 'Business user %s (ID: %d) has requested verification. Please review their profile: %s', 'business-dashboard' ),
+            $user_info->display_name,
+            $current_user_id,
+            admin_url( 'user-edit.php?user_id=' . $current_user_id )
+        );
+        wp_mail( $admin_email, $subject, $message );
+
+        wp_send_json_success( __( 'Verification request submitted successfully! Please await admin review.', 'business-dashboard' ) );
     }
 
     /**

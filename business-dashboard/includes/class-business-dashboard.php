@@ -168,6 +168,18 @@ class Business_Dashboard {
         $this->loader->add_action( 'wp_ajax_business_dashboard_load_section', $plugin_public, 'load_dashboard_section' );
         $this->loader->add_action( 'wp_ajax_nopriv_business_dashboard_load_section', $plugin_public, 'load_dashboard_section' );
 
+        // AJAX for updating business profile settings
+        $this->loader->add_action( 'wp_ajax_business_dashboard_update_profile_settings', $plugin_public, 'ajax_update_business_profile_settings' );
+        // No nopriv for settings update as it requires login
+
+        // AJAX for changing password
+        $this->loader->add_action( 'wp_ajax_business_dashboard_change_password', $plugin_public, 'ajax_change_password' );
+        // No nopriv for password change as it requires login
+
+        // AJAX for requesting verification
+        $this->loader->add_action( 'wp_ajax_business_dashboard_request_verification', $plugin_public, 'ajax_request_verification' );
+        // No nopriv for verification request as it requires login
+
         // WP Cron for scheduled product sync
         $this->loader->add_action( 'business_dashboard_scheduled_sync', $plugin_public, 'scheduled_product_sync' );
     }
@@ -251,6 +263,60 @@ class Business_Dashboard {
                     <th><label for="twitter_url"><?php _e( 'X (Twitter) URL', 'business-dashboard' ); ?></label></th>
                     <td>
                         <input type="url" name="twitter_url" id="twitter_url" value="<?php echo esc_attr( get_user_meta( $user->ID, 'twitter_url', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="country"><?php _e( 'Country', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="text" name="country" id="country" value="<?php echo esc_attr( get_user_meta( $user->ID, 'country', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="business_type"><?php _e( 'Business Type', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="text" name="business_type" id="business_type" value="<?php echo esc_attr( get_user_meta( $user->ID, 'business_type', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="industry"><?php _e( 'Industry', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="text" name="industry" id="industry" value="<?php echo esc_attr( get_user_meta( $user->ID, 'industry', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="established_year"><?php _e( 'Established Year', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="number" name="established_year" id="established_year" value="<?php echo esc_attr( get_user_meta( $user->ID, 'established_year', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="full_description"><?php _e( 'Full Description', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <textarea name="full_description" id="full_description" rows="10" cols="30"><?php echo esc_textarea( get_user_meta( $user->ID, 'full_description', true ) ); ?></textarea>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="business_address"><?php _e( 'Business Address', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <textarea name="business_address" id="business_address" rows="5" cols="30"><?php echo esc_textarea( get_user_meta( $user->ID, 'business_address', true ) ); ?></textarea>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="business_registration_number"><?php _e( 'Business Registration Number', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="text" name="business_registration_number" id="business_registration_number" value="<?php echo esc_attr( get_user_meta( $user->ID, 'business_registration_number', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="tax_id"><?php _e( 'Tax ID', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="text" name="tax_id" id="tax_id" value="<?php echo esc_attr( get_user_meta( $user->ID, 'tax_id', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="certificate_upload"><?php _e( 'Certificate Upload URL', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="url" name="certificate_upload" id="certificate_upload" value="<?php echo esc_attr( get_user_meta( $user->ID, 'certificate_upload', true ) ); ?>" class="regular-text" />
                     </td>
                 </tr>
                 <tr>
@@ -341,6 +407,15 @@ class Business_Dashboard {
             'linkedin_url',
             'twitter_url',
             'verification_status',
+            'country',
+            'business_type',
+            'industry',
+            'established_year',
+            'full_description',
+            'business_address',
+            'business_registration_number',
+            'tax_id',
+            'certificate_upload',
         );
 
         foreach ( $fields as $field ) {

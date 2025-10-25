@@ -150,6 +150,12 @@
                         $contentArea.html(response.data.content);
                         // Re-initialize any scripts or event listeners for the new content if necessary
                         // For now, the existing sync form handler is delegated, so it should work.
+                        if (section === 'settings') {
+                            initProfileSettingsTabs();
+                            initProfileSettingsForm();
+                            initChangePasswordModal();
+                            initVerificationInfo();
+                        }
                     } else {
                         $contentArea.html('<p class="business-dashboard-error">' + response.data + '</p>');
                     }
@@ -181,6 +187,12 @@
         $('.business-dashboard-nav-link[data-section="' + initialSection + '"]').addClass('active');
         // No need to call loadDashboardSection here, as PHP already renders the initial content.
         // This ensures that the initial page load is not an AJAX call.
+        if (initialSection === 'settings') {
+            initProfileSettingsTabs();
+            initProfileSettingsForm();
+            initChangePasswordModal();
+            initVerificationInfo();
+        }
 
         // Handle manual product sync via AJAX
         $(document).on('submit', '.business-dashboard-section form', function(e) {
@@ -223,6 +235,212 @@
                 });
             }
         });
+
+        // --- New Functionality for Business Profile Settings ---
+
+        // Initialize tabs for profile settings
+        function initProfileSettingsTabs() {
+            $(document).off('click', '.business-dashboard-tabs-wrap .nav-tab').on('click', '.business-dashboard-tabs-wrap .nav-tab', function(e) {
+                e.preventDefault();
+                var $this = $(this);
+                var targetTab = $this.data('tab');
+
+                $('.business-dashboard-tabs-wrap .nav-tab').removeClass('nav-tab-active');
+                $this.addClass('nav-tab-active');
+
+                $('.business-dashboard-tab-content').hide();
+                $('#' + targetTab + '-tab').show();
+            });
+
+            // Set initial active tab
+            var initialTab = new URLSearchParams(window.location.hash.substring(1)).get('tab') || 'business-info';
+            $('.business-dashboard-tabs-wrap .nav-tab[data-tab="' + initialTab + '"]').click();
+        }
+
+        // Handle profile settings form submission
+        function initProfileSettingsForm() {
+            $(document).off('submit', '#business-profile-settings-form').on('submit', '#business-profile-settings-form', function(e) {
+                e.preventDefault();
+
+                var $form = $(this);
+                var $submitButton = $('#submit-profile-settings');
+                var $feedbackArea = $('#profile-settings-feedback');
+                var originalButtonText = $submitButton.val();
+
+                $submitButton.val('Saving...').prop('disabled', true).addClass('loading');
+                $feedbackArea.empty().removeClass('business-dashboard-success business-dashboard-error');
+
+                var formData = new FormData(this);
+                formData.append('action', 'business_dashboard_update_profile_settings');
+                formData.append('nonce', business_dashboard_public_vars.profile_settings_nonce);
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            $feedbackArea.addClass('business-dashboard-success').text(response.data);
+                            // Trigger glowing animation
+                            $submitButton.addClass('glowing-success');
+                            setTimeout(function() {
+                                $submitButton.removeClass('glowing-success');
+                            }, 2000); // Remove class after 2 seconds
+                            // Reload section to update displayed profile info
+                            loadDashboardSection('settings');
+                        } else {
+                            $feedbackArea.addClass('business-dashboard-error').text(response.data);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error updating profile settings:', textStatus, errorThrown, jqXHR.responseText);
+                        $feedbackArea.addClass('business-dashboard-error').text('An unexpected error occurred. Please try again.');
+                    },
+                    complete: function() {
+                        $submitButton.val(originalButtonText).prop('disabled', false).removeClass('loading');
+                    }
+                });
+            });
+        }
+
+        // Initialize change password modal
+        function initChangePasswordModal() {
+            var $modal = $('#change-password-modal');
+            var $closeButton = $modal.find('.business-dashboard-modal-close');
+            var $changePasswordButton = $('#change-password-button');
+            var $passwordChangeForm = $('#change-password-form');
+            var $passwordChangeFeedback = $('#password-change-feedback');
+
+            $changePasswordButton.off('click').on('click', function() {
+                $modal.show();
+            });
+
+            $closeButton.off('click').on('click', function() {
+                $modal.hide();
+                $passwordChangeForm[0].reset();
+                $passwordChangeFeedback.empty().removeClass('business-dashboard-success business-dashboard-error');
+            });
+
+            $(window).off('click.modal').on('click.modal', function(event) {
+                if ($(event.target).is($modal)) {
+                    $modal.hide();
+                    $passwordChangeForm[0].reset();
+                    $passwordChangeFeedback.empty().removeClass('business-dashboard-success business-dashboard-error');
+                }
+            });
+
+            $passwordChangeForm.off('submit').on('submit', function(e) {
+                e.preventDefault();
+
+                var $form = $(this);
+                var $submitButton = $form.find('input[type="submit"]');
+                var originalButtonText = $submitButton.val();
+
+                $submitButton.val('Changing...').prop('disabled', true).addClass('loading');
+                $passwordChangeFeedback.empty().removeClass('business-dashboard-success business-dashboard-error');
+
+                var currentPassword = $('#current_password').val();
+                var newPassword = $('#new_password').val();
+                var confirmNewPassword = $('#confirm_new_password').val();
+
+                if (newPassword !== confirmNewPassword) {
+                    $passwordChangeFeedback.addClass('business-dashboard-error').text('New passwords do not match.');
+                    $submitButton.val(originalButtonText).prop('disabled', false).removeClass('loading');
+                    return;
+                }
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'business_dashboard_change_password',
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        nonce: business_dashboard_public_vars.change_password_nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $passwordChangeFeedback.addClass('business-dashboard-success').text(response.data);
+                            $form[0].reset();
+                            setTimeout(function() {
+                                $modal.hide();
+                            }, 2000);
+                        } else {
+                            $passwordChangeFeedback.addClass('business-dashboard-error').text(response.data);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error changing password:', textStatus, errorThrown, jqXHR.responseText);
+                        $passwordChangeFeedback.addClass('business-dashboard-error').text('An unexpected error occurred. Please try again.');
+                    },
+                    complete: function() {
+                        $submitButton.val(originalButtonText).prop('disabled', false).removeClass('loading');
+                    }
+                });
+            });
+        }
+
+        // Initialize verification info logic
+        function initVerificationInfo() {
+            var $regNum = $('#business_registration_number');
+            var $taxId = $('#tax_id');
+            var $certificateUpload = $('#certificate_upload');
+            var $requestVerificationButton = $('#request-verification-button');
+            var $verificationStatusDisplay = $('#verification-status-display');
+
+            function checkVerificationFields() {
+                var allFilled = $regNum.val().length > 0 && $taxId.val().length > 0;
+                // Check if a file is selected or if a certificate URL already exists
+                var fileProvided = $certificateUpload[0].files.length > 0 || ($certificateUpload.next('a').length > 0 && $certificateUpload.next('a').attr('href').length > 0);
+                
+                if (allFilled && fileProvided && $verificationStatusDisplay.text().toLowerCase().indexOf('pending') !== -1) {
+                    $requestVerificationButton.prop('disabled', false);
+                } else {
+                    $requestVerificationButton.prop('disabled', true);
+                }
+            }
+
+            $regNum.off('keyup change').on('keyup change', checkVerificationFields);
+            $taxId.off('keyup change').on('keyup change', checkVerificationFields);
+            $certificateUpload.off('change').on('change', checkVerificationFields);
+
+            // Initial check on load
+            checkVerificationFields();
+
+            $requestVerificationButton.off('click').on('click', function() {
+                var $thisButton = $(this);
+                var originalButtonText = $thisButton.text();
+
+                $thisButton.text('Requesting...').prop('disabled', true).addClass('loading');
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'business_dashboard_request_verification',
+                        nonce: business_dashboard_public_vars.request_verification_nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $verificationStatusDisplay.text('Pending');
+                            alert(response.data); // Or use a more styled feedback
+                        } else {
+                            alert(response.data);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error requesting verification:', textStatus, errorThrown, jqXHR.responseText);
+                        alert('An unexpected error occurred. Please try again.');
+                    },
+                    complete: function() {
+                        $thisButton.text(originalButtonText).prop('disabled', false).removeClass('loading');
+                        checkVerificationFields(); // Re-check status
+                    }
+                });
+            });
+        }
     });
 
 })( jQuery );
