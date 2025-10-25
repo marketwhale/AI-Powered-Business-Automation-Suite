@@ -34,6 +34,104 @@
             }
         });
 
+        // Handle product search for linking to business posts
+        var searchTimeout;
+        $(document).on('keyup', '#linked_product_search', function() {
+            var $this = $(this);
+            var searchTerm = $this.val();
+            var $searchResults = $('#product-search-results');
+            clearTimeout(searchTimeout);
+
+            if (searchTerm.length < 3) {
+                $searchResults.empty();
+                return;
+            }
+
+            searchTimeout = setTimeout(function() {
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'business_dashboard_search_products',
+                        search_term: searchTerm,
+                        nonce: business_dashboard_public_vars.product_search_nonce
+                    },
+                    success: function(response) {
+                        $searchResults.empty();
+                        if (response.success && response.data.length > 0) {
+                            $.each(response.data, function(index, product) {
+                                $searchResults.append(
+                                    '<div class="business-dashboard-search-result-item" data-product-id="' + product.id + '" data-product-name="' + product.name + '">' +
+                                        product.name + ' (SKU: ' + product.sku + ')' +
+                                    '</div>'
+                                );
+                            });
+                        } else {
+                            $searchResults.append('<div class="business-dashboard-search-result-item">' + 'No products found.' + '</div>');
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error searching products:', textStatus, errorThrown, jqXHR.responseText);
+                        $searchResults.empty().append('<p class="business-dashboard-error">' + 'Error searching products.' + '</p>');
+                    }
+                });
+            }, 500); // 500ms debounce
+        });
+
+        // Handle selection of a product from search results
+        $(document).on('click', '.business-dashboard-search-result-item', function() {
+            var $this = $(this);
+            var productId = $this.data('product-id');
+            var productName = $this.data('product-name');
+
+            $('#linked_product_id').val(productId);
+            $('#linked_product_search').val(productName);
+            $('#selected-product-display').html('<p><strong>' + 'Selected Product:' + '</strong> ' + productName + '</p>');
+            $('#product-search-results').empty();
+        });
+
+        // Handle business post creation form submission
+        $(document).on('submit', '#business-post-creation-form', function(e) {
+            e.preventDefault();
+
+            var $form = $(this);
+            var $submitButton = $('#publish-post-button');
+            var $feedbackArea = $('#post-creation-feedback');
+            var originalButtonText = $submitButton.val();
+
+            $submitButton.val('Publishing...').prop('disabled', true).addClass('loading');
+            $feedbackArea.empty().removeClass('business-dashboard-success business-dashboard-error');
+
+            var formData = new FormData(this);
+            formData.append('action', 'business_dashboard_create_post');
+            formData.append('nonce', business_dashboard_public_vars.post_creation_nonce);
+
+            $.ajax({
+                url: business_dashboard_public_vars.ajax_url,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        $feedbackArea.addClass('business-dashboard-success').text(response.data);
+                        $form[0].reset(); // Clear form
+                        $('#linked_product_id').val('');
+                        $('#selected-product-display').empty();
+                    } else {
+                        $feedbackArea.addClass('business-dashboard-error').text(response.data);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('AJAX Error creating post:', textStatus, errorThrown, jqXHR.responseText);
+                    $feedbackArea.addClass('business-dashboard-error').text('An unexpected error occurred. Please try again.');
+                },
+                complete: function() {
+                    $submitButton.val(originalButtonText).prop('disabled', false).removeClass('loading');
+                }
+            });
+        });
+
         // Function to load dashboard section content via AJAX
         function loadDashboardSection(section) {
             var $contentArea = $('#business-dashboard-content-area');

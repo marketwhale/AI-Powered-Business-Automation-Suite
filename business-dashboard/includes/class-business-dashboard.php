@@ -230,6 +230,40 @@ class Business_Dashboard {
                     </td>
                 </tr>
                 <tr>
+                    <th><label for="facebook_url"><?php _e( 'Facebook URL', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="url" name="facebook_url" id="facebook_url" value="<?php echo esc_attr( get_user_meta( $user->ID, 'facebook_url', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="instagram_url"><?php _e( 'Instagram URL', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="url" name="instagram_url" id="instagram_url" value="<?php echo esc_attr( get_user_meta( $user->ID, 'instagram_url', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="linkedin_url"><?php _e( 'LinkedIn URL', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="url" name="linkedin_url" id="linkedin_url" value="<?php echo esc_attr( get_user_meta( $user->ID, 'linkedin_url', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="twitter_url"><?php _e( 'X (Twitter) URL', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="url" name="twitter_url" id="twitter_url" value="<?php echo esc_attr( get_user_meta( $user->ID, 'twitter_url', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="verification_status"><?php _e( 'Verification Status', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <select name="verification_status" id="verification_status">
+                            <option value="pending" <?php selected( get_user_meta( $user->ID, 'verification_status', true ), 'pending' ); ?>><?php _e( 'Pending Verification', 'business-dashboard' ); ?></option>
+                            <option value="verified" <?php selected( get_user_meta( $user->ID, 'verification_status', true ), 'verified' ); ?>><?php _e( 'Verified', 'business-dashboard' ); ?></option>
+                            <option value="rejected" <?php selected( get_user_meta( $user->ID, 'verification_status', true ), 'rejected' ); ?>><?php _e( 'Rejected', 'business-dashboard' ); ?></option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
                     <th><label for="profile_image"><?php _e( 'Profile Image URL', 'business-dashboard' ); ?></label></th>
                     <td>
                         <input type="url" name="profile_image" id="profile_image" value="<?php echo esc_attr( get_user_meta( $user->ID, 'profile_image', true ) ); ?>" class="regular-text" />
@@ -302,6 +336,11 @@ class Business_Dashboard {
             'consumer_secret',
             'data_source_type',
             'last_sync_date',
+            'facebook_url',
+            'instagram_url',
+            'linkedin_url',
+            'twitter_url',
+            'verification_status',
         );
 
         foreach ( $fields as $field ) {

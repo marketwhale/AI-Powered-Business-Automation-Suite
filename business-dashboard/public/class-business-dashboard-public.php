@@ -75,6 +75,8 @@ class Business_Dashboard_Public {
                 'ajax_url' => admin_url( 'admin-ajax.php' ),
                 'nonce'    => wp_create_nonce( 'business_product_sync_action' ), // Ensure nonce is passed
                 'dashboard_nonce' => wp_create_nonce( 'business_dashboard_load_section_nonce' ),
+                'post_creation_nonce' => wp_create_nonce( 'business_post_creation_action' ),
+                'product_search_nonce' => wp_create_nonce( 'business_product_search_action' ),
                 'loading_text' => __( 'Loading...', 'business-dashboard' ),
             )
         );
@@ -330,6 +332,7 @@ class Business_Dashboard_Public {
                     <ul>
                         <li><a href="?section=profile" class="business-dashboard-nav-link <?php echo 'profile' === $current_section ? 'active' : ''; ?>" data-section="profile"><?php _e( 'Business Profile', 'business-dashboard' ); ?></a></li>
                         <li><a href="?section=product-sync" class="business-dashboard-nav-link <?php echo 'product-sync' === $current_section ? 'active' : ''; ?>" data-section="product-sync"><?php _e( 'Product Sync', 'business-dashboard' ); ?></a></li>
+                        <li><a href="?section=post-creation" class="business-dashboard-nav-link <?php echo 'post-creation' === $current_section ? 'active' : ''; ?>" data-section="post-creation"><?php _e( 'Business Post Creation', 'business-dashboard' ); ?></a></li>
                         <li><a href="<?php echo esc_url( wp_logout_url( home_url() ) ); ?>" class="business-dashboard-nav-link"><?php _e( 'Logout', 'business-dashboard' ); ?></a></li>
                     </ul>
                 </div>
@@ -352,54 +355,9 @@ class Business_Dashboard_Public {
      */
     private function render_dashboard_section_content( $user_id, $section ) {
         $current_user = get_userdata( $user_id ); // Re-fetch user data for consistency
-        if ( 'profile' === $section ) : ?>
-            <!-- Business Profile Section -->
-            <div class="business-dashboard-section">
-                <h2><?php _e( 'Business Profile', 'business-dashboard' ); ?></h2>
-                <form method="post" enctype="multipart/form-data" class="business-dashboard-profile-form">
-                    <p>
-                        <label for="business_name"><?php _e( 'Business Name', 'business-dashboard' ); ?></label>
-                        <input type="text" name="business_name" id="business_name" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'business_name', true ) ); ?>" required />
-                    </p>
-                    <p>
-                        <label for="website_url"><?php _e( 'Website URL', 'business-dashboard' ); ?></label>
-                        <input type="url" name="website_url" id="website_url" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'website_url', true ) ); ?>" />
-                    </p>
-                    <p>
-                        <label for="business_description"><?php _e( 'Business Description', 'business-dashboard' ); ?></label>
-                        <textarea name="business_description" id="business_description" rows="5"><?php echo esc_textarea( get_user_meta( $current_user->ID, 'business_description', true ) ); ?></textarea>
-                    </p>
-                    <p>
-                        <label for="contact_phone"><?php _e( 'Contact Phone', 'business-dashboard' ); ?></label>
-                        <input type="text" name="contact_phone" id="contact_phone" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'contact_phone', true ) ); ?>" />
-                    </p>
-                    <p>
-                        <label for="profile_image"><?php _e( 'Profile Image', 'business-dashboard' ); ?></label>
-                        <input type="file" name="profile_image" id="profile_image" accept="image/*" />
-                        <?php
-                        $profile_image_url = get_user_meta( $current_user->ID, 'profile_image', true );
-                        if ( $profile_image_url ) {
-                            echo '<img src="' . esc_url( $profile_image_url ) . '" style="max-width: 100px; height: auto;" />';
-                        }
-                        ?>
-                    </p>
-                    <p>
-                        <label for="cover_image"><?php _e( 'Cover Image', 'business-dashboard' ); ?></label>
-                        <input type="file" name="cover_image" id="cover_image" accept="image/*" />
-                        <?php
-                        $cover_image_url = get_user_meta( $current_user->ID, 'cover_image', true );
-                        if ( $cover_image_url ) {
-                            echo '<img src="' . esc_url( $cover_image_url ) . '" style="max-width: 200px; height: auto;" />';
-                        }
-                        ?>
-                    </p>
-                    <p>
-                        <input type="submit" name="save_profile" value="<?php _e( 'Save Changes', 'business-dashboard' ); ?>" />
-                    </p>
-                    <?php wp_nonce_field( 'business_profile_update_action', 'business_profile_nonce' ); ?>
-                </form>
-            </div>
-        <?php elseif ( 'product-sync' === $section ) : ?>
+        if ( 'profile' === $section ) {
+            require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-profile-view.php';
+        } elseif ( 'product-sync' === $section ) { ?>
             <!-- Product Sync Section -->
             <div class="business-dashboard-section">
                 <h2><?php _e( 'Product Sync', 'business-dashboard' ); ?></h2>
@@ -440,7 +398,9 @@ class Business_Dashboard_Public {
                     <?php echo $this->display_sync_logs( $current_user->ID ); ?>
                 </div>
             </div>
-        <?php endif;
+        <?php } elseif ( 'post-creation' === $section ) {
+            require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-post-creation.php';
+        }
     }
 
     /**
@@ -541,18 +501,13 @@ class Business_Dashboard_Public {
      */
     private function display_sync_logs( $user_id ) {
         $logs = get_user_meta( $user_id, 'business_dashboard_sync_logs', true );
-        if ( empty( $logs ) || ! is_array( $logs ) ) {
-            return '<p>' . __( 'No sync logs available.', 'business-dashboard' ) . '</p>';
+        if ( ! is_array( $logs ) ) {
+            $logs = array();
         }
-
-        ob_start();
-        echo '<ul class="business-dashboard-sync-logs">';
-        foreach ( array_reverse( $logs ) as $log ) { // Show most recent first
-            $status_class = ( $log['status'] === 'success' ) ? 'business-dashboard-success' : 'business-dashboard-error';
-            echo '<li><span class="' . esc_attr( $status_class ) . '">' . esc_html( ucfirst( $log['status'] ) ) . '</span> - ' . esc_html( $log['timestamp'] ) . ': ' . esc_html( $log['message'] ) . '</li>';
-        }
-        echo '</ul>';
-        return ob_get_clean();
+        $logs[] = $log_entry;
+        // Keep only the last 10 logs to prevent meta bloat
+        $logs = array_slice( $logs, -10 );
+        update_user_meta( $user_id, 'business_dashboard_sync_logs', $logs );
     }
 
     /**
@@ -561,7 +516,7 @@ class Business_Dashboard_Public {
      * @since    1.0.0
      * @param    int    $user_id    The user ID.
      */
-    private function process_business_profile_update( $user_id ) {
+    public function process_business_profile_update( $user_id ) {
         if ( ! current_user_can( 'edit_user', $user_id ) ) {
             return;
         }
@@ -575,6 +530,10 @@ class Business_Dashboard_Public {
             'api_key'              => sanitize_text_field( $_POST['api_key'] ),
             'consumer_secret'      => sanitize_text_field( $_POST['consumer_secret'] ),
             'data_source_type'     => sanitize_text_field( $_POST['data_source_type'] ),
+            'facebook_url'         => esc_url_raw( $_POST['facebook_url'] ),
+            'instagram_url'        => esc_url_raw( $_POST['instagram_url'] ),
+            'linkedin_url'         => esc_url_raw( $_POST['linkedin_url'] ),
+            'twitter_url'          => esc_url_raw( $_POST['twitter_url'] ),
         );
 
         foreach ( $fields_to_update as $meta_key => $meta_value ) {
@@ -894,6 +853,151 @@ class Business_Dashboard_Public {
                 }
             }
         }
+    }
+
+    /**
+     * AJAX handler for creating a new business post.
+     *
+     * @since    1.0.0
+     */
+    public function create_business_post() {
+        check_ajax_referer( 'business_post_creation_action', 'nonce' );
+
+        if ( ! is_user_logged_in() || ! current_user_can( 'business_user' ) ) {
+            wp_send_json_error( __( 'You do not have permission to create posts.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+        $post_title = sanitize_text_field( $_POST['post_title'] );
+        $post_description = sanitize_textarea_field( $_POST['post_description'] );
+        $linked_product_id = isset( $_POST['linked_product_id'] ) ? absint( $_POST['linked_product_id'] ) : 0;
+
+        if ( empty( $post_title ) ) {
+            wp_send_json_error( __( 'Post title is required.', 'business-dashboard' ) );
+        }
+
+        $post_data = array(
+            'post_title'    => $post_title,
+            'post_content'  => $post_description,
+            'post_status'   => 'publish',
+            'post_author'   => $current_user_id,
+            'post_type'     => 'business_post',
+        );
+
+        $post_id = wp_insert_post( $post_data );
+
+        if ( is_wp_error( $post_id ) ) {
+            wp_send_json_error( $post_id->get_error_message() );
+        }
+
+        // Handle image upload for the post
+        $image_id = $this->handle_post_image_upload( $post_id, 'post_image' );
+        if ( $image_id ) {
+            update_post_meta( $post_id, '_business_post_image_id', $image_id );
+            set_post_thumbnail( $post_id, $image_id ); // Set as featured image
+        }
+
+        // Link product if provided
+        if ( $linked_product_id ) {
+            update_post_meta( $post_id, '_linked_product_id', $linked_product_id );
+        }
+
+        wp_send_json_success( __( 'Business post created successfully!', 'business-dashboard' ) );
+    }
+
+    /**
+     * Handle image uploads for business posts.
+     *
+     * @since    1.0.0
+     * @param    int    $post_id    The post ID.
+     * @param    string $file_input_name The name of the file input field.
+     * @return   int|bool           Attachment ID on success, false on failure.
+     */
+    private function handle_post_image_upload( $post_id, $file_input_name ) {
+        if ( ! function_exists( 'wp_handle_upload' ) ) {
+            require_once( ABSPATH . 'wp-admin/includes/file.php' );
+        }
+        if ( ! function_exists( 'wp_insert_attachment' ) ) {
+            require_once( ABSPATH . 'wp-admin/includes/post.php' );
+        }
+        if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
+            require_once( ABSPATH . 'wp-admin/includes/image.php' );
+        }
+
+        if ( ! empty( $_FILES[ $file_input_name ]['name'] ) ) {
+            $uploaded_file = $_FILES[ $file_input_name ];
+            $upload_overrides = array( 'test_form' => false );
+            $move_file = wp_handle_upload( $uploaded_file, $upload_overrides );
+
+            if ( $move_file && ! isset( $move_file['error'] ) ) {
+                $attachment = array(
+                    'guid'           => $move_file['url'],
+                    'post_mime_type' => $move_file['type'],
+                    'post_title'     => sanitize_file_name( $move_file['file'] ),
+                    'post_content'   => '',
+                    'post_status'    => 'inherit'
+                );
+                $attach_id = wp_insert_attachment( $attachment, $move_file['file'], $post_id );
+                $attach_data = wp_generate_attachment_metadata( $attach_id, $move_file['file'] );
+                wp_update_attachment_metadata( $attach_id, $attach_data );
+                return $attach_id;
+            } else {
+                error_log( 'Business Dashboard Post Image Upload Error: ' . $move_file['error'] );
+            }
+        }
+        return false;
+    }
+
+    /**
+     * AJAX handler for searching synced products.
+     *
+     * @since    1.0.0
+     */
+    public function search_synced_products() {
+        check_ajax_referer( 'business_product_search_action', 'nonce' );
+
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to perform this action.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+        $search_term = isset( $_POST['search_term'] ) ? sanitize_text_field( $_POST['search_term'] ) : '';
+
+        if ( empty( $search_term ) ) {
+            wp_send_json_success( array() );
+        }
+
+        $args = array(
+            'post_type'      => 'product',
+            'post_status'    => 'publish',
+            'posts_per_page' => 10,
+            's'              => $search_term,
+            'meta_query'     => array(
+                array(
+                    'key'     => '_business_user_id',
+                    'value'   => $current_user_id,
+                    'compare' => '=',
+                ),
+            ),
+        );
+
+        $products = new WP_Query( $args );
+        $results = array();
+
+        if ( $products->have_posts() ) {
+            while ( $products->have_posts() ) {
+                $products->the_post();
+                $_product = wc_get_product( get_the_ID() );
+                $results[] = array(
+                    'id'   => get_the_ID(),
+                    'name' => $_product->get_name(),
+                    'sku'  => $_product->get_sku(),
+                );
+            }
+            wp_reset_postdata();
+        }
+
+        wp_send_json_success( $results );
     }
 
     /**
