@@ -207,6 +207,9 @@
             initProductSyncForm();
         }
 
+        // Initialize business URL slug check for registration form
+        initBusinessUrlSlugCheckRegister();
+
         // --- New Functionality for Business Profile Settings ---
 
         // Initialize tabs for profile settings
@@ -555,11 +558,78 @@
             });
         }
 
-        // New function for business URL slug availability check
+        // New function for business URL slug availability check (for profile settings)
         function initBusinessUrlSlugCheck() {
             var $businessUrlInput = $('#business_url_slug');
             var $urlPreview = $('#full-business-url-preview');
             var $availabilitySpan = $('#business-url-availability');
+            var checkUrlTimeout;
+            var baseUrl = 'https://bestbrands.live/';
+
+            function updateUrlPreview(slug) {
+                if (slug) {
+                    $urlPreview.text(baseUrl + slug + '/');
+                } else {
+                    $urlPreview.text(baseUrl + '{your-business-name}/');
+                }
+            }
+
+            function checkSlugAvailability(slug) {
+                if (slug.length < 3) {
+                    $availabilitySpan.empty();
+                    return;
+                }
+
+                $availabilitySpan.html('<span style="color: #888;">Checking...</span>');
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'business_dashboard_check_business_url',
+                        business_url_slug: slug,
+                        nonce: business_dashboard_public_vars.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            if (response.data.available) {
+                                $availabilitySpan.html('<span style="color: #4CAF50;">Available</span>');
+                            } else {
+                                $availabilitySpan.html('<span style="color: #F44336;">Not Available</span>');
+                            }
+                        } else {
+                            $availabilitySpan.html('<span style="color: #F44336;">Error checking availability.</span>');
+                            console.error('Error checking business URL availability:', response.data);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error checking business URL availability:', textStatus, errorThrown, jqXHR.responseText);
+                        $availabilitySpan.html('<span style="color: #F44336;">Error checking availability.</span>');
+                    }
+                });
+            }
+
+            $businessUrlInput.off('keyup').on('keyup', function() {
+                var slug = $(this).val().toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/--+/g, '-'); // Sanitize slug
+                $(this).val(slug); // Update input with sanitized slug
+                updateUrlPreview(slug);
+
+                clearTimeout(checkUrlTimeout);
+                checkUrlTimeout = setTimeout(function() {
+                    checkSlugAvailability(slug);
+                }, 500); // Debounce for 500ms
+            });
+
+            // Initial check and preview on load
+            updateUrlPreview($businessUrlInput.val());
+            checkSlugAvailability($businessUrlInput.val());
+        }
+
+        // New function for business URL slug availability check (for registration form)
+        function initBusinessUrlSlugCheckRegister() {
+            var $businessUrlInput = $('#business_url_slug_register');
+            var $urlPreview = $('#full-business-url-preview-register');
+            var $availabilitySpan = $('#business-url-availability-register');
             var checkUrlTimeout;
             var baseUrl = 'https://bestbrands.live/';
 

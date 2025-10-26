@@ -92,28 +92,47 @@ class Business_Dashboard_Public {
     public function business_register_shortcode( $atts ) {
         ob_start();
         if ( is_user_logged_in() ) {
-            echo '<p>' . __( 'You are already logged in.', 'business-dashboard' ) . '</p>';
+            echo '<p>' . __( 'You are already logged in. <a href="' . esc_url( wp_logout_url( home_url() ) ) . '">Logout</a>', 'business-dashboard' ) . '</p>';
             return ob_get_clean();
         }
 
+        $errors = array();
         if ( isset( $_POST['business_register_nonce'] ) && wp_verify_nonce( $_POST['business_register_nonce'], 'business_register_action' ) ) {
             $errors = $this->process_business_registration();
             if ( empty( $errors ) ) {
-                echo '<p class="business-dashboard-success">' . __( 'Your registration has been submitted and is awaiting admin approval.', 'business-dashboard' ) . '</p>';
-                return ob_get_clean();
-            } else {
-                foreach ( $errors as $error ) {
-                    echo '<p class="business-dashboard-error">' . esc_html( $error ) . '</p>';
-                }
+                // Redirect to business dashboard after successful registration
+                wp_redirect( home_url( '/business-dashboard/?section=profile' ) );
+                exit;
             }
         }
         ?>
         <div class="business-dashboard-form-wrap">
             <h2><?php _e( 'Business Registration', 'business-dashboard' ); ?></h2>
+            <?php if ( ! empty( $errors ) ) : ?>
+                <?php foreach ( $errors as $error ) : ?>
+                    <p class="business-dashboard-error"><?php echo esc_html( $error ); ?></p>
+                <?php endforeach; ?>
+            <?php endif; ?>
             <form method="post" enctype="multipart/form-data">
                 <p>
                     <label for="business_name"><?php _e( 'Business Name', 'business-dashboard' ); ?></label>
                     <input type="text" name="business_name" id="business_name" required value="<?php echo isset( $_POST['business_name'] ) ? esc_attr( $_POST['business_name'] ) : ''; ?>" />
+                </p>
+                <p>
+                    <label for="business_url_slug"><?php _e( 'Business URL Slug', 'business-dashboard' ); ?></label>
+                    <input type="text" name="business_url_slug" id="business_url_slug_register" required value="<?php echo isset( $_POST['business_url_slug'] ) ? esc_attr( $_POST['business_url_slug'] ) : ''; ?>" />
+                    <p class="description">
+                        <?php _e( 'Your public URL will be:', 'business-dashboard' ); ?> <strong id="full-business-url-preview-register">https://bestbrands.live/<?php echo isset( $_POST['business_url_slug'] ) ? esc_attr( $_POST['business_url_slug'] ) : '{your-business-name}'; ?>/</strong>
+                        <span id="business-url-availability-register" style="margin-left: 10px;"></span>
+                    </p>
+                </p>
+                <p>
+                    <label for="website_url"><?php _e( 'Website URL', 'business-dashboard' ); ?></label>
+                    <input type="url" name="website_url" id="website_url" required value="<?php echo isset( $_POST['website_url'] ) ? esc_attr( $_POST['website_url'] ) : ''; ?>" />
+                </p>
+                <p>
+                    <label for="contact_phone"><?php _e( 'Contact Phone (+Country Code)', 'business-dashboard' ); ?></label>
+                    <input type="text" name="contact_phone" id="contact_phone" required value="<?php echo isset( $_POST['contact_phone'] ) ? esc_attr( $_POST['contact_phone'] ) : ''; ?>" />
                 </p>
                 <p>
                     <label for="user_email"><?php _e( 'Email', 'business-dashboard' ); ?></label>
@@ -124,30 +143,14 @@ class Business_Dashboard_Public {
                     <input type="password" name="user_pass" id="user_pass" required />
                 </p>
                 <p>
-                    <label for="website_url"><?php _e( 'Website URL', 'business-dashboard' ); ?></label>
-                    <input type="url" name="website_url" id="website_url" value="<?php echo isset( $_POST['website_url'] ) ? esc_attr( $_POST['website_url'] ) : ''; ?>" />
-                </p>
-                <p>
-                    <label for="business_description"><?php _e( 'Business Description', 'business-dashboard' ); ?></label>
-                    <textarea name="business_description" id="business_description" rows="5"><?php echo isset( $_POST['business_description'] ) ? esc_textarea( $_POST['business_description'] ) : ''; ?></textarea>
-                </p>
-                <p>
-                    <label for="profile_image"><?php _e( 'Profile Image', 'business-dashboard' ); ?></label>
-                    <input type="file" name="profile_image" id="profile_image" accept="image/*" />
-                </p>
-                <p>
-                    <label for="cover_image"><?php _e( 'Cover Image', 'business-dashboard' ); ?></label>
-                    <input type="file" name="cover_image" id="cover_image" accept="image/*" />
-                </p>
-                <p>
-                    <label for="contact_phone"><?php _e( 'Contact Phone', 'business-dashboard' ); ?></label>
-                    <input type="text" name="contact_phone" id="contact_phone" value="<?php echo isset( $_POST['contact_phone'] ) ? esc_attr( $_POST['contact_phone'] ) : ''; ?>" />
-                </p>
-                <p>
                     <input type="submit" name="submit_registration" value="<?php _e( 'Register', 'business-dashboard' ); ?>" />
                 </p>
                 <?php wp_nonce_field( 'business_register_action', 'business_register_nonce' ); ?>
             </form>
+            <p class="business-dashboard-form-links">
+                <?php _e( 'Already have an account?', 'business-dashboard' ); ?> <a href="<?php echo esc_url( home_url( '/business-login/' ) ); ?>"><?php _e( 'Login here', 'business-dashboard' ); ?></a><br />
+                <a href="<?php echo esc_url( wp_lostpassword_url() ); ?>"><?php _e( 'Forgot Password?', 'business-dashboard' ); ?></a>
+            </p>
         </div>
         <?php
         return ob_get_clean();
@@ -163,14 +166,27 @@ class Business_Dashboard_Public {
         $errors = array();
 
         $business_name = sanitize_text_field( $_POST['business_name'] );
+        $business_url_slug = sanitize_title( $_POST['business_url_slug'] );
+        $website_url = esc_url_raw( $_POST['website_url'] );
+        $contact_phone = sanitize_text_field( $_POST['contact_phone'] );
         $user_email = sanitize_email( $_POST['user_email'] );
         $user_pass = $_POST['user_pass'];
-        $website_url = esc_url_raw( $_POST['website_url'] );
-        $business_description = sanitize_textarea_field( $_POST['business_description'] );
-        $contact_phone = sanitize_text_field( $_POST['contact_phone'] );
+        // Removed business_description, profile_image, cover_image from registration form
 
         if ( empty( $business_name ) ) {
             $errors[] = __( 'Business Name is required.', 'business-dashboard' );
+        }
+        if ( empty( $business_url_slug ) ) {
+            $errors[] = __( 'Business URL Slug is required.', 'business-dashboard' );
+        }
+        if ( $this->get_user_id_by_business_url_slug( $business_url_slug ) ) {
+            $errors[] = __( 'This Business URL Slug is already taken. Please choose a different one.', 'business-dashboard' );
+        }
+        if ( empty( $website_url ) ) {
+            $errors[] = __( 'Website URL is required.', 'business-dashboard' );
+        }
+        if ( empty( $contact_phone ) ) {
+            $errors[] = __( 'Contact Phone is required.', 'business-dashboard' );
         }
         if ( ! is_email( $user_email ) ) {
             $errors[] = __( 'A valid email address is required.', 'business-dashboard' );
@@ -199,14 +215,15 @@ class Business_Dashboard_Public {
 
         // Update user meta
         update_user_meta( $user_id, 'business_name', $business_name );
+        update_user_meta( $user_id, 'business_url_slug', $business_url_slug );
         update_user_meta( $user_id, 'website_url', $website_url );
-        update_user_meta( $user_id, 'business_description', $business_description );
         update_user_meta( $user_id, 'contact_phone', $contact_phone );
         update_user_meta( $user_id, 'business_status', 'pending' ); // Default status
-
-        // Handle image uploads
-        $this->handle_image_upload( $user_id, 'profile_image', 'profile_image' );
-        $this->handle_image_upload( $user_id, 'cover_image', 'cover_image' );
+        // Initialize other meta fields that are now set in profile settings
+        update_user_meta( $user_id, 'business_description', '' );
+        update_user_meta( $user_id, 'profile_image', '' );
+        update_user_meta( $user_id, 'cover_image', '' );
+        update_user_meta( $user_id, 'verification_status', 'pending' ); // Default verification status
 
         return $errors;
     }
@@ -278,7 +295,12 @@ class Business_Dashboard_Public {
         echo '<h2>' . __( 'Business Login', 'business-dashboard' ) . '</h2>';
         echo wp_login_form( $args );
         echo '</div>';
-
+        ?>
+        <p class="business-dashboard-form-links">
+            <?php _e( 'Don\'t have an account?', 'business-dashboard' ); ?> <a href="<?php echo esc_url( home_url( '/business-register/' ) ); ?>"><?php _e( 'Register here', 'business-dashboard' ); ?></a><br />
+            <a href="<?php echo esc_url( wp_lostpassword_url() ); ?>"><?php _e( 'Forgot Password?', 'business-dashboard' ); ?></a>
+        </p>
+        <?php
         return ob_get_clean();
     }
 
