@@ -139,41 +139,22 @@
 
             setTimeout(function() { // Wait for fade-out to complete
                 $contentArea.removeClass('fade-out'); // Remove fade-out class
-                $contentArea.html('<div class="business-dashboard-loading">' + business_dashboard_public_vars.loading_text + '</div>'); // Show loading indicator
+                // Hide all sections and show the requested one
+                $('.business-dashboard-section-content').removeClass('active');
+                $('#' + section + '-section').addClass('active');
+                $contentArea.removeClass('initial-hidden-state').addClass('fade-in'); // Fade in new content
 
-                $.ajax({
-                    url: business_dashboard_public_vars.ajax_url,
-                    type: 'POST',
-                    data: {
-                        action: 'business_dashboard_load_section',
-                        section: section,
-                        nonce: business_dashboard_public_vars.dashboard_nonce
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            $contentArea.html(response.data.content);
-                            $contentArea.removeClass('initial-hidden-state').addClass('fade-in'); // Fade in new content
-                            // Re-initialize any scripts or event listeners for the new content if necessary
-                            if (section === 'settings') {
-                                initProfileSettingsTabs();
-                                initProfileSettingsForm();
-                                initChangePasswordModal();
-                                initVerificationInfo();
-                            } else if (section === 'product-sync') {
-                                initProductSyncTabs();
-                                initProductSyncForm();
-                            }
-                        } else {
-                            $contentArea.html('<p class="business-dashboard-error">' + response.data + '</p>');
-                            $contentArea.removeClass('initial-hidden-state').addClass('fade-in'); // Fade in error message
-                        }
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        console.error('AJAX Error loading section:', textStatus, errorThrown, jqXHR.responseText);
-                        $contentArea.html('<p class="business-dashboard-error">' + 'Failed to load section. Please try again.' + '</p>');
-                        $contentArea.removeClass('initial-hidden-state').addClass('fade-in'); // Fade in error message
-                    }
-                });
+                // Re-initialize any scripts or event listeners for the new content if necessary
+                if (section === 'settings') {
+                    initProfileSettingsTabs();
+                    initProfileSettingsForm();
+                    initChangePasswordModal();
+                    initVerificationInfo();
+                } else if (section === 'product-sync') {
+                    initProductSyncTabs();
+                    initProductSyncForm();
+                }
+                // No specific JS initialization needed for 'profile' or 'post-creation' or 'commerce-management'
             }, 300); // Match CSS transition duration
         }
 
@@ -192,11 +173,13 @@
             }
         });
 
-        // Initial load for the current section on page load
+        // Initial setup on page load
         var initialSection = new URLSearchParams(window.location.search).get('section') || 'profile';
         $('.business-dashboard-nav-link[data-section="' + initialSection + '"]').addClass('active');
-        // No need to call loadDashboardSection here, as PHP already renders the initial content.
-        // This ensures that the initial page load is not an AJAX call.
+        $('.business-dashboard-section-content').removeClass('active');
+        $('#' + initialSection + '-section').addClass('active');
+
+        // Initialize scripts for the initially active section
         if (initialSection === 'settings') {
             initProfileSettingsTabs();
             initProfileSettingsForm();
@@ -206,6 +189,7 @@
             initProductSyncTabs();
             initProductSyncForm();
         }
+        // No specific JS initialization needed for 'profile' or 'post-creation' or 'commerce-management'
 
         // --- New Functionality for Business Profile Settings ---
 

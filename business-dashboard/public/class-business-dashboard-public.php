@@ -315,13 +315,8 @@ class Business_Dashboard_Public {
         }
 
         $current_section = isset( $_GET['section'] ) ? $_GET['section'] : 'profile';
-        $is_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX;
-
-        if ( $is_ajax ) {
-            // Only output the content for the requested section during AJAX calls
-            $this->render_dashboard_section_content( $current_user->ID, $current_section );
-            return ob_get_clean();
-        }
+        // All sections will be rendered on initial load, then shown/hidden by JS
+        // No need for AJAX check here for content rendering
         ?>
         <div class="business-dashboard-wrap">
             <div class="business-dashboard-layout">
@@ -333,13 +328,28 @@ class Business_Dashboard_Public {
                         <li><a href="?section=profile" class="business-dashboard-nav-link <?php echo 'profile' === $current_section ? 'active' : ''; ?>" data-section="profile"><?php _e( 'Business Profile', 'business-dashboard' ); ?></a></li>
                         <li><a href="?section=product-sync" class="business-dashboard-nav-link <?php echo 'product-sync' === $current_section ? 'active' : ''; ?>" data-section="product-sync"><?php _e( 'Product Sync', 'business-dashboard' ); ?></a></li>
                         <li><a href="?section=post-creation" class="business-dashboard-nav-link <?php echo 'post-creation' === $current_section ? 'active' : ''; ?>" data-section="post-creation"><?php _e( 'Business Post Creation', 'business-dashboard' ); ?></a></li>
+                        <li><a href="?section=commerce-management" class="business-dashboard-nav-link <?php echo 'commerce-management' === $current_section ? 'active' : ''; ?>" data-section="commerce-management"><?php _e( 'Commerce Management', 'business-dashboard' ); ?></a></li>
                         <li><a href="?section=settings" class="business-dashboard-nav-link <?php echo 'settings' === $current_section ? 'active' : ''; ?>" data-section="settings"><?php _e( 'Business Profile Settings', 'business-dashboard' ); ?></a></li>
                         <li><a href="<?php echo esc_url( wp_logout_url( home_url() ) ); ?>" class="business-dashboard-nav-link"><?php _e( 'Logout', 'business-dashboard' ); ?></a></li>
                     </ul>
                 </div>
 
                 <div class="business-dashboard-content-area" id="business-dashboard-content-area">
-                    <?php $this->render_dashboard_section_content( $current_user->ID, $current_section ); ?>
+                    <div id="profile-section" class="business-dashboard-section-content <?php echo 'profile' === $current_section ? 'active' : ''; ?>">
+                        <?php require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-profile-view.php'; ?>
+                    </div>
+                    <div id="product-sync-section" class="business-dashboard-section-content <?php echo 'product-sync' === $current_section ? 'active' : ''; ?>">
+                        <?php require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-product-sync-section.php'; ?>
+                    </div>
+                    <div id="post-creation-section" class="business-dashboard-section-content <?php echo 'post-creation' === $current_section ? 'active' : ''; ?>">
+                        <?php require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-post-creation.php'; ?>
+                    </div>
+                    <div id="commerce-management-section" class="business-dashboard-section-content <?php echo 'commerce-management' === $current_section ? 'active' : ''; ?>">
+                        <?php require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-commerce-management.php'; ?>
+                    </div>
+                    <div id="settings-section" class="business-dashboard-section-content <?php echo 'settings' === $current_section ? 'active' : ''; ?>">
+                        <?php require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-profile-settings.php'; ?>
+                    </div>
                 </div>
             </div>
         </div>
@@ -349,26 +359,34 @@ class Business_Dashboard_Public {
 
     /**
      * Render the content for a specific dashboard section.
+     * This method is now primarily used to include partials directly in the shortcode output.
      *
      * @since    1.0.0
      * @param    int    $user_id    The current user ID.
      * @param    string $section    The section to render.
+     * @return   string             The HTML content of the partial.
      */
     private function render_dashboard_section_content( $user_id, $section ) {
+        ob_start();
         $current_user = get_userdata( $user_id ); // Re-fetch user data for consistency
         if ( 'profile' === $section ) {
-            require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-profile-view.php';
+            require BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-profile-view.php';
         } elseif ( 'product-sync' === $section ) {
-            require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-product-sync-section.php';
+            require BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-product-sync-section.php';
         } elseif ( 'post-creation' === $section ) {
-            require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-post-creation.php';
+            require BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-post-creation.php';
+        } elseif ( 'commerce-management' === $section ) {
+            require BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-commerce-management.php';
         } elseif ( 'settings' === $section ) {
-            require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-profile-settings.php';
+            require BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-profile-settings.php';
         }
+        return ob_get_clean();
     }
 
     /**
      * AJAX handler for loading dashboard sections.
+     * This is now simplified to only handle permissions and return success,
+     * as content is already in DOM and handled by JS.
      *
      * @since    1.0.0
      */
@@ -389,13 +407,8 @@ class Business_Dashboard_Public {
             wp_send_json_error( __( 'Your business account is awaiting approval or has been rejected. You cannot access the dashboard yet.', 'business-dashboard' ) );
         }
 
-        $section = isset( $_POST['section'] ) ? sanitize_text_field( $_POST['section'] ) : 'profile';
-
-        ob_start();
-        $this->render_dashboard_section_content( $current_user->ID, $section );
-        $content = ob_get_clean();
-
-        wp_send_json_success( array( 'content' => $content ) );
+        // Content is now handled by JavaScript, so just send success
+        wp_send_json_success( array( 'message' => __( 'Section loaded successfully (handled by JS).', 'business-dashboard' ) ) );
     }
 
     /**

@@ -787,6 +787,26 @@ body.business-dashboard-page {
     margin-bottom: 15px;
 }
 
+/* --- Commerce Management Specific Styles --- */
+.commerce-management-iframe-wrap {
+    position: relative;
+    width: 100%;
+    padding-bottom: 75%; /* 4:3 Aspect Ratio */
+    height: 0;
+    overflow: hidden;
+    border-radius: var(--border-radius-medium);
+    box-shadow: var(--shadow-subtle);
+}
+
+.commerce-management-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
 /* --- Post Creation Specific Styles --- */
 .business-dashboard-search-results {
     border: 1px solid var(--border-color);
@@ -890,22 +910,19 @@ body.business-dashboard-page {
     to { transform: rotate(360deg); }
 }
 
-/* --- Content Transition Animations --- */
-.business-dashboard-content-area.fade-out {
+/* --- Content Area Sections --- */
+.business-dashboard-content-area .business-dashboard-section-content {
+    display: none; /* Hidden by default */
     opacity: 0;
     transform: translateY(10px);
     transition: opacity 0.3s ease-out, transform 0.3s ease-out;
 }
 
-.business-dashboard-content-area.fade-in {
+.business-dashboard-content-area .business-dashboard-section-content.active {
+    display: block; /* Show active section */
     opacity: 1;
     transform: translateY(0);
     transition: opacity 0.3s ease-in, transform 0.3s ease-in;
-}
-
-.business-dashboard-content-area.initial-hidden-state {
-    opacity: 0;
-    transform: translateY(10px);
 }
 
 /* --- Responsive Adjustments --- */
