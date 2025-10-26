@@ -180,8 +180,16 @@ class Business_Dashboard {
         $this->loader->add_action( 'wp_ajax_business_dashboard_request_verification', $plugin_public, 'ajax_request_verification' );
         // No nopriv for verification request as it requires login
 
+        // AJAX for checking business URL slug availability
+        $this->loader->add_action( 'wp_ajax_business_dashboard_check_business_url', $plugin_public, 'ajax_check_business_url_availability' );
+        $this->loader->add_action( 'wp_ajax_nopriv_business_dashboard_check_business_url', $plugin_public, 'ajax_check_business_url_availability' ); // Allow non-logged in users to check availability
+
         // WP Cron for scheduled product sync
         $this->loader->add_action( 'business_dashboard_scheduled_sync', $plugin_public, 'scheduled_product_sync' );
+
+        // Custom rewrite rules for business profiles
+        $this->loader->add_action( 'init', $this, 'add_business_rewrite_endpoint' );
+        $this->loader->add_action( 'template_redirect', $plugin_public, 'display_business_profile_by_url' );
     }
 
     /**
@@ -374,6 +382,13 @@ class Business_Dashboard {
                         <input type="text" name="last_sync_date" id="last_sync_date" value="<?php echo esc_attr( get_user_meta( $user->ID, 'last_sync_date', true ) ); ?>" class="regular-text" readonly />
                     </td>
                 </tr>
+                <tr>
+                    <th><label for="business_url_slug"><?php _e( 'Business URL Slug', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="text" name="business_url_slug" id="business_url_slug" value="<?php echo esc_attr( get_user_meta( $user->ID, 'business_url_slug', true ) ); ?>" class="regular-text" />
+                        <p class="description"><?php _e( 'This will be used for the public profile URL (e.g., https://bestbrands.live/your-slug/).', 'business-dashboard' ); ?></p>
+                    </td>
+                </tr>
             </table>
             <?php
         }
@@ -416,11 +431,17 @@ class Business_Dashboard {
             'business_registration_number',
             'tax_id',
             'certificate_upload',
+            'business_url_slug', // New meta field
         );
 
         foreach ( $fields as $field ) {
             if ( isset( $_POST[ $field ] ) ) {
-                update_user_meta( $user_id, $field, sanitize_text_field( $_POST[ $field ] ) );
+                // Sanitize business_url_slug specifically
+                if ( $field === 'business_url_slug' ) {
+                    update_user_meta( $user_id, $field, sanitize_title( $_POST[ $field ] ) );
+                } else {
+                    update_user_meta( $user_id, $field, sanitize_text_field( $_POST[ $field ] ) );
+                }
             }
         }
     }
@@ -465,4 +486,12 @@ class Business_Dashboard {
         return $this->version;
     }
 
+    /**
+     * Add custom rewrite endpoint for business profiles.
+     *
+     * @since    1.0.0
+     */
+    public function add_business_rewrite_endpoint() {
+        add_rewrite_endpoint( 'business_url_slug', EP_PERMALINK | EP_PAGES );
+    }
 }

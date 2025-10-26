@@ -34,6 +34,9 @@ $business_address = get_user_meta( $current_user->ID, 'business_address', true )
 $business_registration_number = get_user_meta( $current_user->ID, 'business_registration_number', true );
 $tax_id = get_user_meta( $current_user->ID, 'tax_id', true );
 $certificate_upload_url = get_user_meta( $current_user->ID, 'certificate_upload', true );
+$business_url_slug = get_user_meta( $current_user->ID, 'business_url_slug', true ); // New meta field
+$base_business_url = 'https://bestbrands.live/';
+$full_business_url_preview = $base_business_url . ( ! empty( $business_url_slug ) ? $business_url_slug . '/' : '{your-business-name}/' );
 
 // Determine verification badge
 $verification_badge = '';
@@ -127,6 +130,14 @@ $industries = array( 'Retail', 'Food & Beverage', 'Technology', 'Healthcare', 'E
                 <div class="form-group">
                     <label for="established_year"><?php _e( 'Established Year', 'business-dashboard' ); ?></label>
                     <input type="number" name="established_year" id="established_year" value="<?php echo esc_attr( $established_year ); ?>" min="1900" max="<?php echo date('Y'); ?>" />
+                </div>
+                <div class="form-group">
+                    <label for="business_url_slug"><?php _e( 'Public Business URL Slug', 'business-dashboard' ); ?></label>
+                    <input type="text" name="business_url_slug" id="business_url_slug" value="<?php echo esc_attr( $business_url_slug ); ?>" placeholder="<?php _e( 'e.g., my-awesome-brand', 'business-dashboard' ); ?>" />
+                    <p class="description">
+                        <?php _e( 'Your public URL will be:', 'business-dashboard' ); ?> <strong id="full-business-url-preview"><?php echo esc_url( $full_business_url_preview ); ?></strong>
+                        <span id="business-url-availability" style="margin-left: 10px;"></span>
+                    </p>
                 </div>
                 <div class="form-group">
                     <label for="business_description"><?php _e( 'Short Description (max 160 chars)', 'business-dashboard' ); ?></label>

@@ -50,6 +50,9 @@ class Business_Dashboard_Activator {
 
         // Register custom post type for business posts
         self::register_business_post_type();
+
+        // Add custom rewrite rules
+        self::add_rewrite_rules();
     }
 
     /**
@@ -110,4 +113,17 @@ class Business_Dashboard_Activator {
         register_post_type( 'business_post', $args );
     }
 
+    /**
+     * Add custom rewrite rules for business profiles.
+     *
+     * @since    1.0.0
+     */
+    public static function add_rewrite_rules() {
+        add_rewrite_rule(
+            '^business/([^/]+)/?$',
+            'index.php?business_url_slug=$matches[1]',
+            'top'
+        );
+        flush_rewrite_rules();
+    }
 }

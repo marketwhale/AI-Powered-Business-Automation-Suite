@@ -226,6 +226,9 @@
             // Set initial active tab
             var initialTab = new URLSearchParams(window.location.hash.substring(1)).get('tab') || 'business-info';
             $('.business-dashboard-profile-settings-page .nav-tab-wrapper .nav-tab[data-tab="' + initialTab + '"]').click();
+
+            // Initialize business URL slug availability check
+            initBusinessUrlSlugCheck();
         }
 
         // Handle profile settings form submission
@@ -243,7 +246,7 @@
 
                 var formData = new FormData(this);
                 formData.append('action', 'business_dashboard_update_profile_settings');
-                formData.append('nonce', business_dashboard_public_vars.nonce); // Using general nonce for now, can create specific if needed
+                formData.append('nonce', business_dashboard_public_vars.nonce);
 
                 $.ajax({
                     url: business_dashboard_public_vars.ajax_url,
@@ -254,13 +257,11 @@
                     success: function(response) {
                         if (response.success) {
                             $feedbackArea.addClass('business-dashboard-success').text(response.data);
-                            // Trigger glowing animation
                             $submitButton.addClass('glowing-success');
                             setTimeout(function() {
                                 $submitButton.removeClass('glowing-success');
-                            }, 2000); // Remove class after 2 seconds
-                            // Reload section to update displayed profile info
-                            loadDashboardSection('settings');
+                            }, 2000);
+                            loadDashboardSection('settings'); // Reload section to update displayed profile info
                         } else {
                             $feedbackArea.addClass('business-dashboard-error').text(response.data);
                         }
@@ -329,7 +330,7 @@
                     action: 'business_dashboard_change_password',
                     current_password: currentPassword,
                     new_password: newPassword,
-                    nonce: business_dashboard_public_vars.nonce // Using general nonce for now, can create specific if needed
+                    nonce: business_dashboard_public_vars.nonce
                 },
                     success: function(response) {
                         if (response.success) {
@@ -391,7 +392,7 @@
                     type: 'POST',
                     data: {
                         action: 'business_dashboard_request_verification',
-                        nonce: business_dashboard_public_vars.nonce // Using general nonce for now, can create specific if needed
+                        nonce: business_dashboard_public_vars.nonce
                     },
                     success: function(response) {
                         if (response.success) {
@@ -449,7 +450,7 @@
 
                 var formData = new FormData(this);
                 formData.append('action', 'business_dashboard_manual_product_sync');
-                formData.append('nonce', business_dashboard_public_vars.nonce); // Using general nonce for now, can create specific if needed
+                formData.append('nonce', business_dashboard_public_vars.nonce);
 
                 $.ajax({
                     url: business_dashboard_public_vars.ajax_url,
@@ -463,11 +464,10 @@
                             $('#last-sync-date').text(response.data.last_sync);
                             $('#synced-product-list').html(response.data.product_list);
                             $('#sync-logs-display').html(response.data.sync_logs);
-                            // Trigger glowing animation
                             $submitButton.addClass('glowing-success');
                             setTimeout(function() {
                                 $submitButton.removeClass('glowing-success');
-                            }, 2000); // Remove class after 2 seconds
+                            }, 2000);
                         } else {
                             $feedbackArea.addClass('business-dashboard-error').text(response.data);
                         }
@@ -485,7 +485,7 @@
             // Handle Retry button click for sync logs
             $(document).off('click', '.business-dashboard-sync-logs-list .retry-button').on('click', '.business-dashboard-sync-logs-list .retry-button', function() {
                 var $thisButton = $(this);
-                var logId = $thisButton.data('log-id'); // Assuming log-id is stored in data attribute
+                var logId = $thisButton.data('log-id');
                 var originalButtonText = $thisButton.text();
 
                 $thisButton.text('Retrying...').prop('disabled', true).addClass('loading');
@@ -500,9 +500,8 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            alert('Sync log retried successfully!'); // Replace with better UI feedback
-                            // Reload sync logs or update specific log entry
-                            loadDashboardSection('product-sync'); // Reload entire section for simplicity
+                            alert('Sync log retried successfully!');
+                            loadDashboardSection('product-sync');
                         } else {
                             alert('Error retrying sync log: ' + response.data);
                         }
@@ -524,7 +523,7 @@
                 }
 
                 var $thisButton = $(this);
-                var logId = $thisButton.data('log-id'); // Assuming log-id is stored in data attribute
+                var logId = $thisButton.data('log-id');
                 var originalButtonText = $thisButton.text();
 
                 $thisButton.text('Deleting...').prop('disabled', true).addClass('loading');
@@ -539,9 +538,8 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            alert('Sync log deleted successfully!'); // Replace with better UI feedback
-                            // Reload sync logs or remove specific log entry from DOM
-                            loadDashboardSection('product-sync'); // Reload entire section for simplicity
+                            alert('Sync log deleted successfully!');
+                            loadDashboardSection('product-sync');
                         } else {
                             alert('Error deleting sync log: ' + response.data);
                         }
@@ -555,6 +553,73 @@
                     }
                 });
             });
+        }
+
+        // New function for business URL slug availability check
+        function initBusinessUrlSlugCheck() {
+            var $businessUrlInput = $('#business_url_slug');
+            var $urlPreview = $('#full-business-url-preview');
+            var $availabilitySpan = $('#business-url-availability');
+            var checkUrlTimeout;
+            var baseUrl = 'https://bestbrands.live/';
+
+            function updateUrlPreview(slug) {
+                if (slug) {
+                    $urlPreview.text(baseUrl + slug + '/');
+                } else {
+                    $urlPreview.text(baseUrl + '{your-business-name}/');
+                }
+            }
+
+            function checkSlugAvailability(slug) {
+                if (slug.length < 3) {
+                    $availabilitySpan.empty();
+                    return;
+                }
+
+                $availabilitySpan.html('<span style="color: #888;">Checking...</span>');
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'business_dashboard_check_business_url',
+                        business_url_slug: slug,
+                        nonce: business_dashboard_public_vars.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            if (response.data.available) {
+                                $availabilitySpan.html('<span style="color: #4CAF50;">Available</span>');
+                            } else {
+                                $availabilitySpan.html('<span style="color: #F44336;">Not Available</span>');
+                            }
+                        } else {
+                            $availabilitySpan.html('<span style="color: #F44336;">Error checking availability.</span>');
+                            console.error('Error checking business URL availability:', response.data);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error checking business URL availability:', textStatus, errorThrown, jqXHR.responseText);
+                        $availabilitySpan.html('<span style="color: #F44336;">Error checking availability.</span>');
+                    }
+                });
+            }
+
+            $businessUrlInput.off('keyup').on('keyup', function() {
+                var slug = $(this).val().toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/--+/g, '-'); // Sanitize slug
+                $(this).val(slug); // Update input with sanitized slug
+                updateUrlPreview(slug);
+
+                clearTimeout(checkUrlTimeout);
+                checkUrlTimeout = setTimeout(function() {
+                    checkSlugAvailability(slug);
+                }, 500); // Debounce for 500ms
+            });
+
+            // Initial check and preview on load
+            updateUrlPreview($businessUrlInput.val());
+            checkSlugAvailability($businessUrlInput.val());
         }
     });
 

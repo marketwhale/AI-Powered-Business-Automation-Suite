@@ -606,7 +606,18 @@ class Business_Dashboard_Public {
             'instagram_url'        => esc_url_raw( $_POST['instagram_url'] ),
             'linkedin_url'         => esc_url_raw( $_POST['linkedin_url'] ),
             'twitter_url'          => esc_url_raw( $_POST['twitter_url'] ),
+            'business_url_slug'    => sanitize_title( $_POST['business_url_slug'] ), // Sanitize for URL slug
         );
+
+        // Check for business_url_slug uniqueness before saving
+        if ( isset( $fields_to_update['business_url_slug'] ) ) {
+            $new_slug = $fields_to_update['business_url_slug'];
+            $existing_user_id = $this->get_user_id_by_business_url_slug( $new_slug );
+
+            if ( $existing_user_id && (int) $existing_user_id !== (int) $user_id ) {
+                return new WP_Error( 'business_url_slug_taken', __( 'This business URL slug is already taken. Please choose a different one.', 'business-dashboard' ) );
+            }
+        }
 
         foreach ( $fields_to_update as $meta_key => $meta_value ) {
             update_user_meta( $user_id, $meta_key, $meta_value );
@@ -669,6 +680,49 @@ class Business_Dashboard_Public {
         }
 
         return true;
+    }
+
+    /**
+     * Get user ID by business URL slug.
+     *
+     * @since    1.0.0
+     * @param    string $slug The business URL slug.
+     * @return   int|false    User ID if found, false otherwise.
+     */
+    private function get_user_id_by_business_url_slug( $slug ) {
+        $users = get_users( array(
+            'meta_key'     => 'business_url_slug',
+            'meta_value'   => $slug,
+            'number'       => 1,
+            'fields'       => 'ID',
+        ) );
+        return ! empty( $users ) ? $users[0] : false;
+    }
+
+    /**
+     * AJAX handler for checking business URL slug availability.
+     *
+     * @since    1.0.0
+     */
+    public function ajax_check_business_url_availability() {
+        check_ajax_referer( 'business_product_sync_action', 'nonce' ); // Using general nonce for now
+
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to perform this action.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+        $slug = isset( $_POST['business_url_slug'] ) ? sanitize_title( $_POST['business_url_slug'] ) : '';
+
+        if ( empty( $slug ) ) {
+            wp_send_json_error( __( 'URL slug cannot be empty.', 'business-dashboard' ) );
+        }
+
+        $existing_user_id = $this->get_user_id_by_business_url_slug( $slug );
+
+        $is_available = ( ! $existing_user_id || (int) $existing_user_id === (int) $current_user_id );
+
+        wp_send_json_success( array( 'available' => $is_available ) );
     }
 
     /**
@@ -1319,5 +1373,54 @@ class Business_Dashboard_Public {
         wp_update_attachment_metadata( $attach_id, $attach_data );
 
         return $attach_id;
+    }
+
+    /**
+     * Display business profile by URL slug.
+     *
+     * This function is hooked into 'template_redirect' to display a business profile
+     * when a custom URL slug is matched.
+     *
+     * @since    1.0.0
+     */
+    public function display_business_profile_by_url() {
+        global $wp_query;
+
+        if ( ! isset( $wp_query->query_vars['business_url_slug'] ) ) {
+            return;
+        }
+
+        $slug = sanitize_title( $wp_query->query_vars['business_url_slug'] );
+        $user_id = $this->get_user_id_by_business_url_slug( $slug );
+
+        if ( ! $user_id ) {
+            $wp_query->set_404();
+            status_header( 404 );
+            nocache_headers();
+            return;
+        }
+
+        // Set the current user for the profile view context
+        // This is a workaround to make get_current_user_id() work in the partial
+        // In a real scenario, you might pass the user_id directly to the partial
+        // or use a custom query to fetch user data.
+        $GLOBALS['business_dashboard_current_profile_user_id'] = $user_id;
+
+        // Load a custom template for the business profile
+        add_filter( 'template_include', array( $this, 'include_business_profile_template' ) );
+    }
+
+    /**
+     * Include the custom business profile template.
+     *
+     * @since    1.0.0
+     * @param    string $template The path to the template file.
+     * @return   string           The path to the custom template file.
+     */
+    public function include_business_profile_template( $template ) {
+        if ( file_exists( BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-public-profile-template.php' ) ) {
+            return BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-public-profile-template.php';
+        }
+        return $template;
     }
 }
