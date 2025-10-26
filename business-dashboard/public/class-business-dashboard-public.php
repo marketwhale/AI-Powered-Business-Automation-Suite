@@ -1385,13 +1385,18 @@ class Business_Dashboard_Public {
      */
     public function display_business_profile_by_url() {
         global $wp_query;
+        error_log( 'Business Dashboard: display_business_profile_by_url called.' );
 
         if ( ! isset( $wp_query->query_vars['business_url_slug'] ) ) {
+            error_log( 'Business Dashboard: business_url_slug query var not set.' );
             return;
         }
 
         $slug = sanitize_title( $wp_query->query_vars['business_url_slug'] );
+        error_log( 'Business Dashboard: Detected slug: ' . $slug );
+
         $user_id = $this->get_user_id_by_business_url_slug( $slug );
+        error_log( 'Business Dashboard: User ID for slug ' . $slug . ': ' . ( $user_id ? $user_id : 'Not found' ) );
 
         if ( ! $user_id ) {
             $wp_query->set_404();
@@ -1419,8 +1424,10 @@ class Business_Dashboard_Public {
      */
     public function include_business_profile_template( $template ) {
         if ( file_exists( BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-public-profile-template.php' ) ) {
+            error_log( 'Business Dashboard: Loading custom template: ' . BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-public-profile-template.php' );
             return BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-public-profile-template.php';
         }
+        error_log( 'Business Dashboard: Custom template not found, falling back to default: ' . $template );
         return $template;
     }
 }
