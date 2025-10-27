@@ -644,10 +644,6 @@ class Business_Dashboard_Public {
         foreach ( $fields_to_update as $meta_key => $meta_value ) {
             update_user_meta( $user_id, $meta_key, $meta_value );
         }
-
-        // Handle image uploads
-        $this->handle_image_upload( $user_id, 'profile_image', 'profile_image' );
-        $this->handle_image_upload( $user_id, 'cover_image', 'cover_image' );
     }
 
     /**
@@ -655,6 +651,7 @@ class Business_Dashboard_Public {
      *
      * @since    1.0.0
      * @param    int    $user_id    The user ID.
+     * @return   true|WP_Error      True on success, WP_Error on failure.
      */
     public function process_business_profile_settings_update( $user_id ) {
         if ( ! current_user_can( 'edit_user', $user_id ) ) {
@@ -689,11 +686,7 @@ class Business_Dashboard_Public {
             update_user_meta( $user_id, $meta_key, $meta_value );
         }
 
-        // Handle image uploads for profile and cover images
-        $this->handle_image_upload( $user_id, 'profile_image', 'profile_image' );
-        $this->handle_image_upload( $user_id, 'cover_image', 'cover_image' );
-
-        // Handle certificate upload
+        // Handle certificate upload (profile and cover images are handled by separate AJAX calls)
         if ( ! empty( $_FILES['certificate_upload']['name'] ) ) {
             $certificate_upload_result = $this->handle_file_upload( $user_id, 'certificate_upload', 'certificate_upload', array('pdf', 'jpg', 'jpeg', 'png') );
             if ( is_wp_error( $certificate_upload_result ) ) {
@@ -702,6 +695,62 @@ class Business_Dashboard_Public {
         }
 
         return true;
+    }
+
+    /**
+     * AJAX handler for uploading profile image.
+     *
+     * @since    1.0.0
+     */
+    public function ajax_upload_profile_image() {
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to upload images.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+
+        if ( ! isset( $_POST['business_image_upload_nonce'] ) || ! wp_verify_nonce( $_POST['business_image_upload_nonce'], 'business_image_upload_action' ) ) {
+            wp_send_json_error( __( 'Nonce verification failed.', 'business-dashboard' ) );
+        }
+
+        $upload_result = $this->handle_image_upload( $current_user_id, 'upload_image_file', 'profile_image' );
+
+        if ( is_wp_error( $upload_result ) ) {
+            wp_send_json_error( $upload_result->get_error_message() );
+        } else {
+            wp_send_json_success( array(
+                'message'   => __( 'Profile image uploaded successfully!', 'business-dashboard' ),
+                'image_url' => get_user_meta( $current_user_id, 'profile_image', true )
+            ) );
+        }
+    }
+
+    /**
+     * AJAX handler for uploading cover image.
+     *
+     * @since    1.0.0
+     */
+    public function ajax_upload_cover_image() {
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to upload images.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+
+        if ( ! isset( $_POST['business_image_upload_nonce'] ) || ! wp_verify_nonce( $_POST['business_image_upload_nonce'], 'business_image_upload_action' ) ) {
+            wp_send_json_error( __( 'Nonce verification failed.', 'business-dashboard' ) );
+        }
+
+        $upload_result = $this->handle_image_upload( $current_user_id, 'upload_image_file', 'cover_image' );
+
+        if ( is_wp_error( $upload_result ) ) {
+            wp_send_json_error( $upload_result->get_error_message() );
+        } else {
+            wp_send_json_success( array(
+                'message'   => __( 'Cover image uploaded successfully!', 'business-dashboard' ),
+                'image_url' => get_user_meta( $current_user_id, 'cover_image', true )
+            ) );
+        }
     }
 
     /**

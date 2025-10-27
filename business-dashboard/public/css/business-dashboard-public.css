@@ -531,6 +531,48 @@ body.business-dashboard-page {
     color: #555;
 }
 
+/* Styles for image upload buttons */
+.business-dashboard-upload-cover-button {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    z-index: 1;
+    background-color: rgba(0,0,0,0.5);
+    color: #fff;
+    border: 1px solid #fff;
+    padding: 8px 15px;
+    border-radius: var(--border-radius-small);
+    cursor: pointer;
+    transition: background-color var(--transition-speed) ease;
+}
+
+.business-dashboard-upload-cover-button:hover {
+    background-color: rgba(0,0,0,0.7);
+}
+
+.business-dashboard-profile-image-wrap {
+    position: relative; /* Ensure button is positioned relative to this */
+}
+
+.business-dashboard-upload-profile-button {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    z-index: 1;
+    background-color: rgba(0,0,0,0.5);
+    color: #fff;
+    border: 1px solid #fff;
+    padding: 5px 10px;
+    font-size: 0.8em;
+    border-radius: var(--border-radius-small);
+    cursor: pointer;
+    transition: background-color var(--transition-speed) ease;
+}
+
+.business-dashboard-upload-profile-button:hover {
+    background-color: rgba(0,0,0,0.7);
+}
+
 
 
 

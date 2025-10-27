@@ -159,6 +159,7 @@
                                 initProfileSettingsForm();
                                 initChangePasswordModal();
                                 initVerificationInfo();
+                                initImageUploadModal(); // Initialize new image upload modal
                             } else if (section === 'product-sync') {
                                 initProductSyncTabs();
                                 initProductSyncForm();
@@ -202,6 +203,7 @@
             initProfileSettingsForm();
             initChangePasswordModal();
             initVerificationInfo();
+            initImageUploadModal(); // Initialize new image upload modal
         } else if (initialSection === 'product-sync') {
             initProductSyncTabs();
             initProductSyncForm();
@@ -234,7 +236,7 @@
             initBusinessUrlSlugCheck();
         }
 
-        // Handle profile settings form submission
+        // Handle profile settings form submission (excluding image uploads)
         function initProfileSettingsForm() {
             $(document).off('submit', '#business-profile-settings-form').on('submit', '#business-profile-settings-form', function(e) {
                 e.preventDefault();
@@ -690,6 +692,130 @@
             // Initial check and preview on load
             updateUrlPreview($businessUrlInput.val());
             checkSlugAvailability($businessUrlInput.val());
+        }
+
+        // --- Generic Image Upload Modal Functionality ---
+        function initImageUploadModal() {
+            var $modal = $('#image-upload-modal');
+            var $closeButton = $modal.find('.business-dashboard-modal-close');
+            var $uploadImageFile = $('#upload_image_file');
+            var $imageUploadPreview = $('#image-upload-preview');
+            var $imageUploadPreviewImg = $imageUploadPreview.find('img');
+            var $imageTypeInput = $('#image_type');
+            var $imageUploadForm = $('#image-upload-form');
+            var $imageUploadFeedback = $('#image-upload-feedback');
+            var $uploadImageSubmitButton = $('#upload-image-submit');
+
+            // Open modal when profile or cover upload buttons are clicked
+            $(document).on('click', '.business-dashboard-upload-profile-button, .business-dashboard-upload-cover-button', function() {
+                var imageType = $(this).data('image-type');
+                var currentImageUrl = (imageType === 'profile') ? $('.business-dashboard-profile-image').attr('src') : $('.business-dashboard-cover-image').css('background-image').replace(/url\(['"]?(.*?)['"]?\)/, '$1');
+
+                $('#image-upload-modal-title').text('Upload ' + (imageType === 'profile' ? 'Profile Photo' : 'Cover Photo'));
+                $imageTypeInput.val(imageType);
+
+                // Reset form and preview
+                $imageUploadForm[0].reset();
+                $imageUploadFeedback.empty().removeClass('business-dashboard-success business-dashboard-error');
+                $imageUploadPreview.hide();
+                $imageUploadPreviewImg.attr('src', '');
+
+                // If there's a current image, display it in the preview
+                if (currentImageUrl && currentImageUrl !== 'none' && currentImageUrl !== '<?php echo esc_url( get_avatar_url( get_current_user_id() ) ); ?>') { // Exclude default avatar
+                    $imageUploadPreviewImg.attr('src', currentImageUrl);
+                    $imageUploadPreview.show();
+                }
+
+                $modal.show();
+            });
+
+            // Close modal
+            $closeButton.off('click').on('click', function() {
+                $modal.hide();
+                $imageUploadForm[0].reset();
+                $imageUploadFeedback.empty().removeClass('business-dashboard-success business-dashboard-error');
+                $imageUploadPreview.hide();
+                $imageUploadPreviewImg.attr('src', '');
+            });
+
+            // Close modal when clicking outside
+            $(window).off('click.imageModal').on('click.imageModal', function(event) {
+                if ($(event.target).is($modal)) {
+                    $modal.hide();
+                    $imageUploadForm[0].reset();
+                    $imageUploadFeedback.empty().removeClass('business-dashboard-success business-dashboard-error');
+                    $imageUploadPreview.hide();
+                    $imageUploadPreviewImg.attr('src', '');
+                }
+            });
+
+            // Image preview on file selection
+            $uploadImageFile.off('change').on('change', function() {
+                var input = this;
+                if (input.files && input.files[0]) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        $imageUploadPreviewImg.attr('src', e.target.result);
+                        $imageUploadPreview.show();
+                    };
+                    reader.readAsDataURL(input.files[0]);
+                } else {
+                    $imageUploadPreview.hide();
+                    $imageUploadPreviewImg.attr('src', '');
+                }
+            });
+
+            // Handle image upload form submission
+            $imageUploadForm.off('submit').on('submit', function(e) {
+                e.preventDefault();
+
+                var $form = $(this);
+                var originalButtonText = $uploadImageSubmitButton.val();
+
+                $uploadImageSubmitButton.val('Uploading...').prop('disabled', true).addClass('loading');
+                $imageUploadFeedback.empty().removeClass('business-dashboard-success business-dashboard-error');
+
+                var formData = new FormData(this);
+                var imageType = $imageTypeInput.val();
+                formData.append('action', 'business_dashboard_upload_' + imageType + '_image');
+                formData.append('nonce', business_dashboard_public_vars.nonce); // Using general nonce for now
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            $imageUploadFeedback.addClass('business-dashboard-success').text(response.data.message);
+                            // Update the displayed image on the page
+                            if (imageType === 'profile') {
+                                $('.business-dashboard-profile-image').attr('src', response.data.image_url);
+                            } else if (imageType === 'cover') {
+                                $('.business-dashboard-cover-image').css('background-image', 'url("' + response.data.image_url + '")');
+                            }
+                            $uploadImageSubmitButton.addClass('glowing-success');
+                            setTimeout(function() {
+                                $uploadImageSubmitButton.removeClass('glowing-success');
+                                $modal.hide();
+                                $form[0].reset();
+                                $imageUploadPreview.hide();
+                                $imageUploadPreviewImg.attr('src', '');
+                            }, 2000);
+                        } else {
+                            $imageUploadFeedback.addClass('business-dashboard-error').text(response.data);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error uploading image:', textStatus, errorThrown, jqXHR.responseText);
+                        $imageUploadFeedback.addClass('business-dashboard-error').text('An unexpected error occurred. Please try again.');
+                    },
+                    complete: function() {
+                        $uploadImageSubmitButton.val(originalButtonText).prop('disabled', false).removeClass('loading');
+                    }
+                });
+            });
         }
     });
 

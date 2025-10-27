@@ -53,12 +53,15 @@ $industries = array( 'Retail', 'Food & Beverage', 'Technology', 'Healthcare', 'E
 ?>
 
 <div class="business-dashboard-profile-view business-dashboard-profile-settings-page">
-    <div class="business-dashboard-cover-image" style="background-image: url('<?php echo esc_url( $cover_image_url ); ?>');"></div>
+    <div class="business-dashboard-cover-image" style="background-image: url('<?php echo esc_url( $cover_image_url ); ?>');">
+        <button type="button" class="button button-secondary business-dashboard-upload-cover-button" data-image-type="cover"><?php _e( 'Upload Cover Photo', 'business-dashboard' ); ?></button>
+    </div>
 
     <div class="business-dashboard-profile-card-wrapper">
         <div class="business-dashboard-profile-card">
             <div class="business-dashboard-profile-image-wrap">
                 <img src="<?php echo esc_url( $profile_image_url ); ?>" alt="<?php echo esc_attr( $business_name ); ?>" class="business-dashboard-profile-image" />
+                <button type="button" class="button button-secondary business-dashboard-upload-profile-button" data-image-type="profile"><?php _e( 'Upload Profile Photo', 'business-dashboard' ); ?></button>
             </div>
             <div class="business-dashboard-profile-details">
                 <h2 class="business-dashboard-business-name">
@@ -146,16 +149,6 @@ $industries = array( 'Retail', 'Food & Beverage', 'Technology', 'Healthcare', 'E
                 <div class="form-group">
                     <label for="full_description"><?php _e( 'Full Description', 'business-dashboard' ); ?></label>
                     <textarea name="full_description" id="full_description" rows="10"><?php echo esc_textarea( $full_description ); ?></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="profile_image"><?php _e( 'Profile Image', 'business-dashboard' ); ?></label>
-                    <input type="file" name="profile_image" id="profile_image" accept="image/*" />
-                    <?php if ( $profile_image_url ) : ?><img src="<?php echo esc_url( $profile_image_url ); ?>" alt="<?php _e( 'Profile Image', 'business-dashboard' ); ?>" style="max-width: 100px; height: auto; margin-top: 10px;" /><?php endif; ?>
-                </div>
-                <div class="form-group">
-                    <label for="cover_image"><?php _e( 'Cover Image', 'business-dashboard' ); ?></label>
-                    <input type="file" name="cover_image" id="cover_image" accept="image/*" />
-                    <?php if ( $cover_image_url ) : ?><img src="<?php echo esc_url( $cover_image_url ); ?>" alt="<?php _e( 'Cover Image', 'business-dashboard' ); ?>" style="max-width: 200px; height: auto; margin-top: 10px;" /><?php endif; ?>
                 </div>
             </div>
 
@@ -259,6 +252,29 @@ $industries = array( 'Retail', 'Food & Beverage', 'Technology', 'Healthcare', 'E
                 <input type="submit" value="<?php _e( 'Change Password', 'business-dashboard' ); ?>" class="button button-primary" />
             </p>
             <div id="password-change-feedback" class="business-dashboard-message"></div>
+        </form>
+    </div>
+</div>
+
+<!-- Generic Image Upload Modal -->
+<div id="image-upload-modal" class="business-dashboard-modal" style="display:none;">
+    <div class="business-dashboard-modal-content">
+        <span class="business-dashboard-modal-close">&times;</span>
+        <h2 id="image-upload-modal-title"><?php _e( 'Upload Image', 'business-dashboard' ); ?></h2>
+        <form id="image-upload-form" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="upload_image_file"><?php _e( 'Select Image', 'business-dashboard' ); ?></label>
+                <input type="file" name="upload_image_file" id="upload_image_file" accept="image/*" required />
+                <div id="image-upload-preview" class="image-preview" style="display: none;">
+                    <img src="" alt="<?php _e( 'Image Preview', 'business-dashboard' ); ?>" />
+                </div>
+            </div>
+            <p>
+                <input type="hidden" name="image_type" id="image_type" value="" />
+                <?php wp_nonce_field( 'business_image_upload_action', 'business_image_upload_nonce' ); ?>
+                <input type="submit" value="<?php _e( 'Upload and Save', 'business-dashboard' ); ?>" class="button button-primary" id="upload-image-submit" />
+            </p>
+            <div id="image-upload-feedback" class="business-dashboard-message"></div>
         </form>
     </div>
 </div>

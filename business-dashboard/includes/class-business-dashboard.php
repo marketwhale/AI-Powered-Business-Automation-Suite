@@ -184,6 +184,10 @@ class Business_Dashboard {
         $this->loader->add_action( 'wp_ajax_business_dashboard_check_business_url', $plugin_public, 'ajax_check_business_url_availability' );
         $this->loader->add_action( 'wp_ajax_nopriv_business_dashboard_check_business_url', $plugin_public, 'ajax_check_business_url_availability' ); // Allow non-logged in users to check availability
 
+        // AJAX for image uploads
+        $this->loader->add_action( 'wp_ajax_business_dashboard_upload_profile_image', $plugin_public, 'ajax_upload_profile_image' );
+        $this->loader->add_action( 'wp_ajax_business_dashboard_upload_cover_image', $plugin_public, 'ajax_upload_cover_image' );
+
         // WP Cron for scheduled product sync
         $this->loader->add_action( 'business_dashboard_scheduled_sync', $plugin_public, 'scheduled_product_sync' );
 
