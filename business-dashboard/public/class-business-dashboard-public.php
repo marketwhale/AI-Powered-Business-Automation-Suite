@@ -498,16 +498,23 @@ class Business_Dashboard_Public {
             wp_send_json_error( __( 'Nonce verification failed.', 'business-dashboard' ) );
         }
 
-        $log_index = isset( $_POST['log_id'] ) ? absint( $_POST['log_id'] ) : -1;
+        $log_index_from_frontend = isset( $_POST['log_id'] ) ? absint( $_POST['log_id'] ) : -1;
         $logs = get_user_meta( $current_user_id, 'business_dashboard_sync_logs', true );
 
-        if ( ! is_array( $logs ) || ! isset( $logs[ $log_index ] ) ) {
-            wp_send_json_error( __( 'Invalid sync log ID.', 'business-dashboard' ) );
+        if ( ! is_array( $logs ) ) {
+            $logs = array(); // Ensure $logs is an array to prevent errors
+        }
+
+        // The frontend sends the reversed index, so we need to convert it to the actual index
+        $actual_log_index = count( $logs ) - 1 - $log_index_from_frontend;
+
+        if ( ! isset( $logs[ $actual_log_index ] ) ) {
+            wp_send_json_error( __( 'Invalid sync log ID or log entry not found.', 'business-dashboard' ) );
         }
 
         // Remove the log entry
-        unset( $logs[ $log_index ] );
-        $logs = array_values( $logs ); // Re-index the array
+        unset( $logs[ $actual_log_index ] );
+        $logs = array_values( $logs ); // Re-index the array to prevent gaps
 
         update_user_meta( $current_user_id, 'business_dashboard_sync_logs', $logs );
 
@@ -664,13 +671,17 @@ class Business_Dashboard_Public {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ( array_reverse( $logs ) as $index => $log_entry ) : // Display most recent first ?>
+                    <?php foreach ( array_reverse( $logs ) as $index => $log_entry ) : // Display most recent first
+                        $status = isset( $log_entry['status'] ) ? $log_entry['status'] : 'unknown';
+                        $message = isset( $log_entry['message'] ) ? $log_entry['message'] : __( 'No message provided.', 'business-dashboard' );
+                        $timestamp = isset( $log_entry['timestamp'] ) ? $log_entry['timestamp'] : current_time( 'mysql' );
+                        ?>
                         <tr>
-                            <td><?php echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $log_entry['timestamp'] ) ) ); ?></td>
-                            <td class="status-<?php echo esc_attr( $log_entry['status'] ); ?>"><?php echo esc_html( ucfirst( $log_entry['status'] ) ); ?></td>
-                            <td><?php echo esc_html( $log_entry['message'] ); ?></td>
+                            <td><?php echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $timestamp ) ) ); ?></td>
+                            <td class="status-<?php echo esc_attr( $status ); ?>"><?php echo esc_html( ucfirst( $status ) ); ?></td>
+                            <td><?php echo esc_html( $message ); ?></td>
                             <td class="actions">
-                                <?php if ( 'failed' === $log_entry['status'] ) : ?>
+                                <?php if ( 'failed' === $status ) : ?>
                                     <button class="retry-button button button-secondary" data-log-id="<?php echo count( $logs ) - 1 - $index; ?>"><?php _e( 'Retry', 'business-dashboard' ); ?></button>
                                 <?php endif; ?>
                                 <button class="delete-button button button-secondary" data-log-id="<?php echo count( $logs ) - 1 - $index; ?>"><?php _e( 'Delete', 'business-dashboard' ); ?></button>
@@ -1009,7 +1020,9 @@ class Business_Dashboard_Public {
         // Determine if it's a WooCommerce REST API URL
         $is_woocommerce_api = ( strpos( $sync_url, '/wp-json/wc/v' ) !== false );
 
-        $request_args = array();
+        $request_args = array(
+            'timeout' => 30, // Increase timeout to 30 seconds
+        );
         if ( $is_woocommerce_api && ! empty( $api_key ) && ! empty( $consumer_secret ) ) {
             // For WooCommerce REST API, use Basic Auth
             $request_args['headers'] = array(
