@@ -67,6 +67,7 @@ $public_class = new Business_Dashboard_Public( 'business-dashboard', BUSINESS_DA
 
         <div class="business-dashboard-tab-content" id="synced-products-tab" style="display:none;">
             <h3><?php _e( 'Your Synced Products', 'business-dashboard' ); ?></h3>
+            <p><?php _e( 'Toggle the switch to publish or unpublish products on your public profile.', 'business-dashboard' ); ?></p>
             <div id="synced-product-list">
                 <?php echo $public_class->display_synced_products( $current_user->ID ); ?>
             </div>

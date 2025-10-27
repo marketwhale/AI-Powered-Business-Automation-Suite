@@ -155,15 +155,20 @@
                             $contentArea.removeClass('initial-hidden-state').addClass('fade-in'); // Fade in new content
                             // Re-initialize any scripts or event listeners for the new content if necessary
                             if (section === 'settings') {
-                                initProfileSettingsTabs();
-                                initProfileSettingsForm();
-                                initChangePasswordModal();
-                                initVerificationInfo();
-                                initImageUploadModal(); // Initialize new image upload modal
-                            } else if (section === 'product-sync') {
-                                initProductSyncTabs();
-                                initProductSyncForm();
-                            }
+                            initProfileSettingsTabs();
+                            initProfileSettingsForm();
+                            initChangePasswordModal();
+                            initVerificationInfo();
+                            initImageUploadModal(); // Initialize new image upload modal
+                        } else if (section === 'product-sync') {
+                            initProductSyncTabs();
+                            initProductSyncForm();
+                            initProductPublishToggle(); // Initialize publish toggle
+                            initLazyLoad(); // Initialize lazy load for product grids
+                        } else if (section === 'profile') {
+                            initProfileViewTabs(); // Initialize tabs for the profile view
+                            initLazyLoad(); // Initialize lazy load for product grids
+                        }
                         } else {
                             $contentArea.html('<p class="business-dashboard-error">' + response.data + '</p>');
                             $contentArea.removeClass('initial-hidden-state').addClass('fade-in'); // Fade in error message
@@ -207,8 +212,11 @@
         } else if (initialSection === 'product-sync') {
             initProductSyncTabs();
             initProductSyncForm();
+            initProductPublishToggle(); // Initialize publish toggle
+            initLazyLoad(); // Initialize lazy load for product grids
         } else if (initialSection === 'profile') {
             initProfileViewTabs(); // Initialize tabs for the profile view
+            initLazyLoad(); // Initialize lazy load for product grids
         }
 
         // Initialize business URL slug check for registration form
@@ -256,10 +264,11 @@
                 // Update URL hash for direct linking
                 var newHash = 'tab=' + targetTab;
                 history.replaceState(null, null, '#' + newHash);
+                initLazyLoad(); // Re-initialize lazy load for new tab content
             });
 
             // Set initial active tab for profile view
-            var initialProfileViewTab = new URLSearchParams(window.location.hash.substring(1)).get('tab') || 'synced-products';
+            var initialProfileViewTab = new URLSearchParams(window.location.hash.substring(1)).get('tab') || 'products-listings'; // Changed default tab
             $('.business-dashboard-profile-view .nav-tab-wrapper .nav-tab[data-tab="' + initialProfileViewTab + '"]').click();
         }
 
@@ -372,15 +381,16 @@
                                 $modal.hide();
                             }, 2000);
                         } else {
-                            $passwordChangeFeedback.addClass('business-dashboard-error').text(response.data);
+                            $feedbackArea.addClass('business-dashboard-error').text(response.data);
                         }
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
-                        console.error('AJAX Error changing password:', textStatus, errorThrown, jqXHR.responseText);
-                        $passwordChangeFeedback.addClass('business-dashboard-error').text('An unexpected error occurred. Please try again.');
+                        console.error('AJAX Error updating profile settings:', textStatus, errorThrown, jqXHR.responseText);
+                        $feedbackArea.addClass('business-dashboard-error').text('An unexpected error occurred. Please try again.');
                     },
                     complete: function() {
                         $submitButton.val(originalButtonText).prop('disabled', false).removeClass('loading');
+                        initLazyLoad(); // Re-initialize lazy load after profile update if it affects product grids
                     }
                 });
             });
@@ -465,6 +475,7 @@
             // Set initial active tab
             var initialTab = new URLSearchParams(window.location.hash.substring(1)).get('tab') || 'sync-settings';
             $('.business-dashboard-product-sync-section .nav-tab-wrapper .nav-tab[data-tab="' + initialTab + '"]').click();
+            initLazyLoad(); // Initialize lazy load for product grids in sync section
         }
 
         // Handle product sync form submission
@@ -510,6 +521,7 @@
                     },
                     complete: function() {
                         $submitButton.text(originalButtonText).prop('disabled', false).removeClass('loading pulsing');
+                        initLazyLoad(); // Re-initialize lazy load after sync
                     }
                 });
             });
@@ -584,6 +596,74 @@
                         $thisButton.text(originalButtonText).prop('disabled', false).removeClass('loading');
                     }
                 });
+            });
+        }
+
+        // New function to handle product publish toggle
+        function initProductPublishToggle() {
+            $(document).off('change', '.business-dashboard-product-grid-wrapper .publish-toggle').on('change', '.business-dashboard-product-grid-wrapper .publish-toggle', function() {
+                var $this = $(this);
+                var productId = $this.data('product-id');
+                var isPublished = $this.is(':checked');
+                var $statusText = $this.closest('.business-dashboard-publish-switch').find('.publish-status-text');
+                var originalStatusText = $statusText.text();
+
+                $statusText.text('Updating...');
+                $this.prop('disabled', true);
+
+                $.ajax({
+                    url: business_dashboard_public_vars.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'business_dashboard_toggle_product_publish_status',
+                        product_id: productId,
+                        is_published: isPublished,
+                        nonce: business_dashboard_public_vars.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $statusText.text(isPublished ? 'Published' : 'Draft');
+                            // Optionally, add a visual feedback like a temporary glow
+                            $this.closest('.business-dashboard-grid-card').addClass('glowing-success');
+                            setTimeout(function() {
+                                $this.closest('.business-dashboard-grid-card').removeClass('glowing-success');
+                            }, 1500);
+                        } else {
+                            alert('Error updating publish status: ' + response.data);
+                            $this.prop('checked', !isPublished); // Revert toggle on error
+                            $statusText.text(originalStatusText);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error toggling publish status:', textStatus, errorThrown, jqXHR.responseText);
+                        alert('An unexpected error occurred while updating publish status.');
+                        $this.prop('checked', !isPublished); // Revert toggle on error
+                        $statusText.text(originalStatusText);
+                    },
+                    complete: function() {
+                        $this.prop('disabled', false);
+                    }
+                });
+            });
+        }
+
+        // New function for lazy loading and fade-in animation for grid items
+        function initLazyLoad() {
+            var lazyLoadInstance = new IntersectionObserver(function(entries, observer) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        var card = entry.target;
+                        $(card).addClass('fade-in-item');
+                        observer.unobserve(card);
+                    }
+                });
+            }, {
+                rootMargin: '0px 0px -50px 0px', // Load when 50px from viewport bottom
+                threshold: 0.1 // Trigger when 10% of item is visible
+            });
+
+            $('.business-dashboard-grid-card').each(function() {
+                lazyLoadInstance.observe(this);
             });
         }
 

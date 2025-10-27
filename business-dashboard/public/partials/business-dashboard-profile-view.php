@@ -69,18 +69,20 @@ if ( 'verified' === $verification_status ) {
 
     <div class="business-dashboard-tabs-wrap">
         <h2 class="nav-tab-wrapper">
-            <a href="javascript:void(0);" class="nav-tab <?php echo ( ! isset( $_GET['tab'] ) || $_GET['tab'] === 'synced-products' ) ? 'nav-tab-active' : ''; ?>" data-tab="synced-products" data-parent-section="profile"><?php _e( 'Synced Products', 'business-dashboard' ); ?></a>
+            <a href="javascript:void(0);" class="nav-tab <?php echo ( ! isset( $_GET['tab'] ) || $_GET['tab'] === 'products-listings' ) ? 'nav-tab-active' : ''; ?>" data-tab="products-listings" data-parent-section="profile"><?php _e( 'Products & Listings', 'business-dashboard' ); ?></a>
             <a href="javascript:void(0);" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'product-gallery' ) ? 'nav-tab-active' : ''; ?>" data-tab="product-gallery" data-parent-section="profile"><?php _e( 'Product Gallery', 'business-dashboard' ); ?></a>
         </h2>
 
         <div class="business-dashboard-tab-content">
-            <div id="synced-products-tab-content" class="business-dashboard-sub-tab-content">
+            <div id="products-listings-tab-content" class="business-dashboard-sub-tab-content">
+                <h3><?php _e( 'Your Published Products', 'business-dashboard' ); ?></h3>
                 <?php
-                // Initial load of synced products
-                echo $this->display_synced_products( $current_user->ID );
+                // Initial load of published products
+                echo $this->display_published_products_grid( $current_user->ID );
                 ?>
             </div>
             <div id="product-gallery-tab-content" class="business-dashboard-sub-tab-content" style="display:none;">
+                <h3><?php _e( 'Your Business Post Gallery', 'business-dashboard' ); ?></h3>
                 <?php
                 // Initial load of product gallery
                 require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-product-gallery-grid.php';

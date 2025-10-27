@@ -530,6 +530,7 @@ class Business_Dashboard_Public {
             'post_type'      => 'product',
             'post_status'    => 'publish',
             'posts_per_page' => -1,
+            'author'         => $user_id, // Ensure products are owned by the user
             'meta_query'     => array(
                 array(
                     'key'     => '_business_user_id',
@@ -541,33 +542,99 @@ class Business_Dashboard_Public {
         $products = new WP_Query( $args );
         ob_start();
         if ( $products->have_posts() ) : ?>
-            <table class="business-dashboard-synced-products-list">
-                <thead>
-                    <tr>
-                        <th><?php _e( 'Image', 'business-dashboard' ); ?></th>
-                        <th><?php _e( 'Name', 'business-dashboard' ); ?></th>
-                        <th><?php _e( 'Price', 'business-dashboard' ); ?></th>
-                        <th><?php _e( 'Stock', 'business-dashboard' ); ?></th>
-                        <th><?php _e( 'Last Synced', 'business-dashboard' ); ?></th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="business-dashboard-product-grid-wrapper">
+                <div class="business-dashboard-product-gallery-grid">
                     <?php while ( $products->have_posts() ) : $products->the_post();
                         $_product = wc_get_product( get_the_ID() );
                         $last_synced_timestamp = get_post_meta( get_the_ID(), '_last_synced_timestamp', true );
+                        $is_published = get_post_meta( get_the_ID(), '_business_dashboard_published', true );
+                        $product_image = $_product->get_image( 'woocommerce_thumbnail', array( 'class' => 'business-dashboard-grid-image' ) );
                         ?>
-                        <tr>
-                            <td><?php echo $_product->get_image( 'thumbnail' ); ?></td>
-                            <td><a href="<?php echo esc_url( get_edit_post_link( get_the_ID() ) ); ?>" target="_blank"><?php echo esc_html( $_product->get_name() ); ?></a></td>
-                            <td><?php echo wp_kses_post( $_product->get_price_html() ); ?></td>
-                            <td><?php echo esc_html( $_product->get_stock_quantity() ); ?></td>
-                            <td><?php echo esc_html( $last_synced_timestamp ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $last_synced_timestamp ) ) : __( 'N/A', 'business-dashboard' ) ); ?></td>
-                        </tr>
+                        <div class="business-dashboard-grid-card product-card" data-product-id="<?php echo esc_attr( get_the_ID() ); ?>">
+                            <div class="business-dashboard-grid-image-wrap">
+                                <?php echo $product_image; ?>
+                                <div class="business-dashboard-grid-overlay">
+                                    <span class="business-dashboard-overlay-price"><?php echo wp_kses_post( $_product->get_price_html() ); ?></span>
+                                    <a href="<?php echo esc_url( get_permalink( get_the_ID() ) ); ?>" class="business-dashboard-overlay-button"><?php _e( 'View Details', 'business-dashboard' ); ?></a>
+                                </div>
+                            </div>
+                            <h3 class="business-dashboard-grid-title"><?php echo esc_html( $_product->get_name() ); ?></h3>
+                            <div class="business-dashboard-product-meta">
+                                <p class="business-dashboard-product-stock"><?php _e( 'Stock:', 'business-dashboard' ); ?> <?php echo esc_html( $_product->get_stock_quantity() ); ?></p>
+                                <p class="business-dashboard-product-last-synced"><?php _e( 'Last Synced:', 'business-dashboard' ); ?> <?php echo esc_html( $last_synced_timestamp ? date_i18n( get_option( 'date_format' ), strtotime( $last_synced_timestamp ) ) : __( 'N/A', 'business-dashboard' ) ); ?></p>
+                                <div class="business-dashboard-publish-switch">
+                                    <label class="switch">
+                                        <input type="checkbox" class="publish-toggle" data-product-id="<?php echo esc_attr( get_the_ID() ); ?>" <?php checked( $is_published, true ); ?>>
+                                        <span class="slider round"></span>
+                                    </label>
+                                    <span class="publish-status-text"><?php echo $is_published ? __( 'Published', 'business-dashboard' ) : __( 'Draft', 'business-dashboard' ); ?></span>
+                                </div>
+                            </div>
+                        </div>
                     <?php endwhile; ?>
-                </tbody>
-            </table>
+                </div>
+            </div>
         <?php else : ?>
             <p><?php _e( 'No products synced yet.', 'business-dashboard' ); ?></p>
+        <?php endif;
+        wp_reset_postdata();
+        return ob_get_clean();
+    }
+
+    /**
+     * Display published products for a business user in a grid format.
+     *
+     * @since    1.0.0
+     * @param    int    $user_id    The business user ID.
+     * @return   string   HTML content for the published products grid.
+     */
+    public function display_published_products_grid( $user_id ) {
+        if ( ! class_exists( 'WooCommerce' ) ) {
+            return '<p>' . __( 'WooCommerce is not active.', 'business-dashboard' ) . '</p>';
+        }
+
+        $args = array(
+            'post_type'      => 'product',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'author'         => $user_id,
+            'meta_query'     => array(
+                array(
+                    'key'     => '_business_user_id',
+                    'value'   => $user_id,
+                    'compare' => '=',
+                ),
+                array(
+                    'key'     => '_business_dashboard_published',
+                    'value'   => '1', // Only show published products
+                    'compare' => '=',
+                ),
+            ),
+        );
+        $products = new WP_Query( $args );
+        ob_start();
+        if ( $products->have_posts() ) : ?>
+            <div class="business-dashboard-product-grid-wrapper">
+                <div class="business-dashboard-product-gallery-grid">
+                    <?php while ( $products->have_posts() ) : $products->the_post();
+                        $_product = wc_get_product( get_the_ID() );
+                        $product_image = $_product->get_image( 'woocommerce_thumbnail', array( 'class' => 'business-dashboard-grid-image' ) );
+                        ?>
+                        <div class="business-dashboard-grid-card product-card">
+                            <div class="business-dashboard-grid-image-wrap">
+                                <?php echo $product_image; ?>
+                                <div class="business-dashboard-grid-overlay">
+                                    <span class="business-dashboard-overlay-price"><?php echo wp_kses_post( $_product->get_price_html() ); ?></span>
+                                    <a href="<?php echo esc_url( get_permalink( get_the_ID() ) ); ?>" class="business-dashboard-overlay-button"><?php _e( 'View Details', 'business-dashboard' ); ?></a>
+                                </div>
+                            </div>
+                            <h3 class="business-dashboard-grid-title"><?php echo esc_html( $_product->get_name() ); ?></h3>
+                        </div>
+                    <?php endwhile; ?>
+                </div>
+            </div>
+        <?php else : ?>
+            <p><?php _e( 'No published products available.', 'business-dashboard' ); ?></p>
         <?php endif;
         wp_reset_postdata();
         return ob_get_clean();
@@ -1141,7 +1208,46 @@ class Business_Dashboard_Public {
         // Link product to business user and update last synced timestamp
         update_post_meta( $product->get_id(), '_business_user_id', $user_id );
         update_post_meta( $product->get_id(), '_last_synced_timestamp', current_time( 'mysql' ) );
+        update_post_meta( $product->get_id(), '_business_dashboard_published', true ); // Default to published
         return true;
+    }
+
+    /**
+     * AJAX handler for toggling product publish status.
+     *
+     * @since    1.0.0
+     */
+    public function ajax_toggle_product_publish_status() {
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( __( 'You must be logged in to perform this action.', 'business-dashboard' ) );
+        }
+
+        $current_user_id = get_current_user_id();
+
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'business_product_sync_action' ) ) {
+            wp_send_json_error( __( 'Nonce verification failed.', 'business-dashboard' ) );
+        }
+
+        $product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
+        $is_published = isset( $_POST['is_published'] ) ? filter_var( $_POST['is_published'], FILTER_VALIDATE_BOOLEAN ) : false;
+
+        if ( ! $product_id ) {
+            wp_send_json_error( __( 'Invalid product ID.', 'business-dashboard' ) );
+        }
+
+        // Verify that the product belongs to the current business user
+        $product_owner_id = get_post_meta( $product_id, '_business_user_id', true );
+        if ( (int) $product_owner_id !== (int) $current_user_id ) {
+            wp_send_json_error( __( 'You do not have permission to modify this product.', 'business-dashboard' ) );
+        }
+
+        update_post_meta( $product_id, '_business_dashboard_published', $is_published );
+
+        wp_send_json_success( array(
+            'message'      => __( 'Product publish status updated successfully!', 'business-dashboard' ),
+            'product_id'   => $product_id,
+            'is_published' => $is_published,
+        ) );
     }
 
     /**
