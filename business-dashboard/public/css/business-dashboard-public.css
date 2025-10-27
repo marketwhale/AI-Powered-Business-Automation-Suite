@@ -1201,7 +1201,7 @@ input:checked + .slider:before {
         padding: 10px;
     }
 }
-}
+
 
 @media (max-width: 480px) {
     .business-dashboard-profile-card {
