@@ -189,6 +189,11 @@ class Business_Dashboard {
         $this->loader->add_action( 'wp_ajax_business_dashboard_upload_profile_image', $plugin_public, 'ajax_upload_profile_image' );
         $this->loader->add_action( 'wp_ajax_business_dashboard_upload_cover_image', $plugin_public, 'ajax_upload_cover_image' );
 
+        // AJAX for creating a new business post
+        $this->loader->add_action( 'wp_ajax_business_dashboard_create_post', $plugin_public, 'create_business_post' );
+        // AJAX for searching synced products
+        $this->loader->add_action( 'wp_ajax_business_dashboard_search_products', $plugin_public, 'search_synced_products' );
+
         // WP Cron for scheduled product sync
         $this->loader->add_action( 'business_dashboard_scheduled_sync', $plugin_public, 'scheduled_product_sync' );
 

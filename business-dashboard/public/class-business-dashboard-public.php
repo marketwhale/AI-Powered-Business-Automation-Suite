@@ -73,10 +73,10 @@ class Business_Dashboard_Public {
             'business_dashboard_public_vars',
             array(
                 'ajax_url' => admin_url( 'admin-ajax.php' ),
-                'nonce'    => wp_create_nonce( 'business_product_sync_action' ), // Ensure nonce is passed
+                'nonce'    => wp_create_nonce( 'business_product_sync_action' ), // General nonce for product sync actions
                 'dashboard_nonce' => wp_create_nonce( 'business_dashboard_load_section_nonce' ),
                 'post_creation_nonce' => wp_create_nonce( 'business_post_creation_action' ),
-                'product_search_nonce' => wp_create_nonce( 'business_product_search_action' ),
+                'product_search_nonce' => wp_create_nonce( 'business_product_search_action' ), // Specific nonce for product search
                 'loading_text' => __( 'Loading...', 'business-dashboard' ),
             )
         );
