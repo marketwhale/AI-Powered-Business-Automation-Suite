@@ -1134,12 +1134,15 @@ class Business_Dashboard_Public {
         // Process and import products
         $imported_count = 0;
         $failed_imports = 0;
+        $failed_messages = array(); // Initialize array to store detailed error messages
+
         foreach ( $products_data as $product_data ) {
             $result = $this->import_woocommerce_product( $user_id, $product_data );
             if ( ! is_wp_error( $result ) ) {
                 $imported_count++;
             } else {
                 $failed_imports++;
+                $failed_messages[] = $result->get_error_message(); // Store the error message
                 error_log( 'Business Dashboard Product Import Error for user ' . $user_id . ' (SKU: ' . (isset($product_data['sku']) ? $product_data['sku'] : 'N/A') . '): ' . $result->get_error_message() );
             }
         }
@@ -1147,9 +1150,15 @@ class Business_Dashboard_Public {
         if ( $imported_count > 0 ) {
             $log_entry['status'] = 'success';
             $log_entry['message'] = sprintf( __( '%d products synced successfully. %d products failed to import.', 'business-dashboard' ), $imported_count, $failed_imports );
+            if ( ! empty( $failed_messages ) ) {
+                $log_entry['message'] .= ' ' . __( 'Details:', 'business-dashboard' ) . ' ' . implode( '; ', array_unique( $failed_messages ) );
+            }
         } else {
             $log_entry['status'] = 'failed';
             $log_entry['message'] = sprintf( __( 'No products were synced. %d products failed to import.', 'business-dashboard' ), $failed_imports );
+            if ( ! empty( $failed_messages ) ) {
+                $log_entry['message'] .= ' ' . __( 'Details:', 'business-dashboard' ) . ' ' . implode( '; ', array_unique( $failed_messages ) );
+            }
         }
 
         $this->add_sync_log( $user_id, $log_entry );
@@ -1269,16 +1278,19 @@ class Business_Dashboard_Public {
 
         // Basic validation for essential product data
         if ( empty( $product_name ) ) {
-            error_log( 'Business Dashboard Product Import Error (User ' . $user_id . '): Product name is missing for product: ' . print_r($product_data, true) );
-            return new WP_Error( 'product_name_missing', sprintf( __( 'Product name is missing in the external data for product with SKU: %s.', 'business-dashboard' ), ( ! empty( $sku ) ? $sku : __( 'N/A', 'business-dashboard' ) ) ) );
+            $error_message = sprintf( __( 'Product name is missing in the external data for product with SKU: %s.', 'business-dashboard' ), ( ! empty( $sku ) ? $sku : __( 'N/A', 'business-dashboard' ) ) );
+            error_log( 'Business Dashboard Product Import Error (User ' . $user_id . '): ' . $error_message . ' Product data: ' . print_r($product_data, true) );
+            return new WP_Error( 'product_name_missing', $error_message );
         }
         if ( empty( $sku ) ) {
-            error_log( 'Business Dashboard Product Import Error (User ' . $user_id . '): Product SKU is missing for product: ' . print_r($product_data, true) );
-            return new WP_Error( 'product_sku_missing', sprintf( __( 'Product SKU is missing in the external data for product: %s.', 'business-dashboard' ), ( ! empty( $product_name ) ? $product_name : __( 'N/A', 'business-dashboard' ) ) ) );
+            $error_message = sprintf( __( 'Product SKU is missing in the external data for product: %s.', 'business-dashboard' ), ( ! empty( $product_name ) ? $product_name : __( 'N/A', 'business-dashboard' ) ) );
+            error_log( 'Business Dashboard Product Import Error (User ' . $user_id . '): ' . $error_message . ' Product data: ' . print_r($product_data, true) );
+            return new WP_Error( 'product_sku_missing', $error_message );
         }
         if ( empty( $price ) && empty( $regular_price ) ) {
-            error_log( 'Business Dashboard Product Import Error (User ' . $user_id . '): Product price is missing for product: ' . print_r($product_data, true) );
-            return new WP_Error( 'product_price_missing', sprintf( __( 'Product price is missing in the external data for product: %s (SKU: %s).', 'business-dashboard' ), ( ! empty( $product_name ) ? $product_name : __( 'N/A', 'business-dashboard' ) ), ( ! empty( $sku ) ? $sku : __( 'N/A', 'business-dashboard' ) ) ) );
+            $error_message = sprintf( __( 'Product price is missing in the external data for product: %s (SKU: %s).', 'business-dashboard' ), ( ! empty( $product_name ) ? $product_name : __( 'N/A', 'business-dashboard' ) ), ( ! empty( $sku ) ? $sku : __( 'N/A', 'business-dashboard' ) ) );
+            error_log( 'Business Dashboard Product Import Error (User ' . $user_id . '): ' . $error_message . ' Product data: ' . print_r($product_data, true) );
+            return new WP_Error( 'product_price_missing', $error_message );
         }
 
         // Check if product exists by SKU
