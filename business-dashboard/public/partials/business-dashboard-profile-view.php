@@ -70,7 +70,8 @@ if ( 'verified' === $verification_status ) {
     <div class="business-dashboard-tabs-wrap">
         <h2 class="nav-tab-wrapper">
             <a href="javascript:void(0);" class="nav-tab <?php echo ( ! isset( $_GET['tab'] ) || $_GET['tab'] === 'products-listings' ) ? 'nav-tab-active' : ''; ?>" data-tab="products-listings" data-parent-section="profile"><?php _e( 'Products & Listings', 'business-dashboard' ); ?></a>
-            <a href="javascript:void(0);" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'product-gallery' ) ? 'nav-tab-active' : ''; ?>" data-tab="product-gallery" data-parent-section="profile"><?php _e( 'Product Gallery', 'business-dashboard' ); ?></a>
+            <a href="javascript:void(0);" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'posts' ) ? 'nav-tab-active' : ''; ?>" data-tab="posts" data-parent-section="profile"><?php _e( 'Posts', 'business-dashboard' ); ?></a>
+            <a href="javascript:void(0);" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'about-us' ) ? 'nav-tab-active' : ''; ?>" data-tab="about-us" data-parent-section="profile"><?php _e( 'About Us', 'business-dashboard' ); ?></a>
         </h2>
 
         <div class="business-dashboard-tab-content">
@@ -81,12 +82,20 @@ if ( 'verified' === $verification_status ) {
                 echo $this->display_published_products_grid( $current_user->ID );
                 ?>
             </div>
-            <div id="product-gallery-tab-content" class="business-dashboard-sub-tab-content" style="display:none;">
-                <h3><?php _e( 'Your Business Post Gallery', 'business-dashboard' ); ?></h3>
+            <div id="posts-tab-content" class="business-dashboard-sub-tab-content" style="display:none;">
+                <h3><?php _e( 'Your Business Posts', 'business-dashboard' ); ?></h3>
                 <?php
-                // Initial load of product gallery
+                // Initial load of business posts (using product gallery grid for display)
                 require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-product-gallery-grid.php';
                 ?>
+            </div>
+            <div id="about-us-tab-content" class="business-dashboard-sub-tab-content" style="display:none;">
+                <h3><?php _e( 'About Our Business', 'business-dashboard' ); ?></h3>
+                <?php if ( $full_description ) : ?>
+                    <p><?php echo nl2br( esc_html( $full_description ) ); ?></p>
+                <?php else : ?>
+                    <p><?php _e( 'No detailed description available.', 'business-dashboard' ); ?></p>
+                <?php endif; ?>
             </div>
         </div>
     </div>

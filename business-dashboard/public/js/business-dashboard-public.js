@@ -268,7 +268,7 @@
             });
 
             // Set initial active tab for profile view
-            var initialProfileViewTab = new URLSearchParams(window.location.hash.substring(1)).get('tab') || 'products-listings'; // Changed default tab
+            var initialProfileViewTab = new URLSearchParams(window.location.hash.substring(1)).get('tab') || 'products-listings';
             $('.business-dashboard-profile-view .nav-tab-wrapper .nav-tab[data-tab="' + initialProfileViewTab + '"]').click();
         }
 
