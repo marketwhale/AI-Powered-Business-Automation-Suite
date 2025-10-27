@@ -414,6 +414,8 @@ class Business_Dashboard_Public {
         $section = isset( $_POST['section'] ) ? sanitize_text_field( $_POST['section'] ) : 'profile';
         $sub_tab = isset( $_POST['sub_tab'] ) ? sanitize_text_field( $_POST['sub_tab'] ) : '';
 
+        error_log( 'Business Dashboard AJAX Load Section: Loading section "' . $section . '" for user ' . $current_user->ID . '.' );
+
         ob_start();
         if ( 'profile' === $section && ! empty( $sub_tab ) ) {
             // Handle sub-tabs within the profile section
@@ -430,6 +432,9 @@ class Business_Dashboard_Public {
             $this->render_dashboard_section_content( $current_user->ID, $section );
         }
         $content = ob_get_clean();
+
+        // Log the content being sent back to the frontend
+        error_log( 'Business Dashboard AJAX Load Section: Content for section "' . $section . '" for user ' . $current_user->ID . ': ' . substr($content, 0, 500) . '...' ); // Log first 500 chars
 
         wp_send_json_success( array( 'content' => $content ) );
     }
@@ -489,35 +494,66 @@ class Business_Dashboard_Public {
      */
     public function ajax_delete_sync_log() {
         if ( ! is_user_logged_in() ) {
+            error_log( 'Business Dashboard AJAX Delete Log Error: User not logged in.' );
             wp_send_json_error( __( 'You must be logged in to perform this action.', 'business-dashboard' ) );
         }
 
         $current_user_id = get_current_user_id();
+        error_log( 'Business Dashboard AJAX Delete Log: User ID ' . $current_user_id . ' attempting to delete log.' );
+        error_log( 'Business Dashboard AJAX Delete Log: Raw $_POST data: ' . print_r($_POST, true) );
 
-        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'business_product_sync_action' ) ) {
+        $nonce_verified = isset( $_POST['nonce'] ) && wp_verify_nonce( $_POST['nonce'], 'business_product_sync_action' );
+        if ( ! $nonce_verified ) {
+            error_log( 'Business Dashboard AJAX Delete Log Error: Nonce verification failed for user ' . $current_user_id . '. POST data: ' . print_r($_POST, true) );
             wp_send_json_error( __( 'Nonce verification failed.', 'business-dashboard' ) );
         }
+        error_log( 'Business Dashboard AJAX Delete Log: Nonce verified for user ' . $current_user_id . '.' );
 
         $log_index_from_frontend = isset( $_POST['log_id'] ) ? absint( $_POST['log_id'] ) : -1;
+        error_log( 'Business Dashboard AJAX Delete Log: Received log_id from frontend: ' . $log_index_from_frontend . ' for user ' . $current_user_id . '.' );
+
         $logs = get_user_meta( $current_user_id, 'business_dashboard_sync_logs', true );
 
         if ( ! is_array( $logs ) ) {
             $logs = array(); // Ensure $logs is an array to prevent errors
+            error_log( 'Business Dashboard AJAX Delete Log Warning: Sync logs meta for user ' . $current_user_id . ' was not an array. Initialized as empty array.' );
         }
 
-        // The frontend sends the reversed index, so we need to convert it to the actual index
-        $actual_log_index = count( $logs ) - 1 - $log_index_from_frontend;
+        // The frontend sends the direct index of the displayed (reversed) list
+        $log_index_to_delete = $log_index_from_frontend;
+        error_log( 'Business Dashboard AJAX Delete Log: Frontend log_id (index in displayed reversed array): ' . $log_index_to_delete . ' for user ' . $current_user_id . '.' );
 
-        if ( ! isset( $logs[ $actual_log_index ] ) ) {
+        // To delete from the original array, we need to convert the frontend index
+        // First, get the logs in the same order as displayed on the frontend
+        $displayed_logs = array_reverse( $logs );
+
+        if ( ! isset( $displayed_logs[ $log_index_to_delete ] ) ) {
+            error_log( 'Business Dashboard AJAX Delete Log Error: Invalid sync log ID (' . $log_index_from_frontend . ') or log entry not found at index ' . $log_index_to_delete . ' in displayed array for user ' . $current_user_id . '. Total displayed logs: ' . count($displayed_logs) );
             wp_send_json_error( __( 'Invalid sync log ID or log entry not found.', 'business-dashboard' ) );
         }
 
-        // Remove the log entry
-        unset( $logs[ $actual_log_index ] );
-        $logs = array_values( $logs ); // Re-index the array to prevent gaps
+        // Get the actual index in the original (non-reversed) array
+        $original_index_to_delete = count( $logs ) - 1 - $log_index_to_delete;
+        error_log( 'Business Dashboard AJAX Delete Log: Calculated original_index_to_delete: ' . $original_index_to_delete . ' for user ' . $current_user_id . '.' );
 
-        update_user_meta( $current_user_id, 'business_dashboard_sync_logs', $logs );
+        // Remove the log entry from the original array
+        $deleted_log_entry = $logs[ $original_index_to_delete ];
+        error_log( 'Business Dashboard AJAX Delete Log: Log entry to be deleted from original array: ' . print_r($deleted_log_entry, true) . ' for user ' . $current_user_id . '.' );
 
+        unset( $logs[ $original_index_to_delete ] );
+        $updated_logs = array_values( $logs ); // Re-index the array to prevent gaps
+        error_log( 'Business Dashboard AJAX Delete Log: Logs array after unset and re-index. New logs count: ' . count($updated_logs) . '. New logs data: ' . print_r($updated_logs, true) . ' for user ' . $current_user_id . '.' );
+
+        $update_result = update_user_meta( $current_user_id, 'business_dashboard_sync_logs', $updated_logs );
+
+        if ( false === $update_result ) {
+            error_log( 'Business Dashboard AJAX Delete Log Error: Failed to update user meta for sync logs for user ' . $current_user_id . '. Logs data: ' . print_r($updated_logs, true) );
+            wp_send_json_error( __( 'Failed to delete sync log due to a database error.', 'business-dashboard' ) );
+        } else {
+            error_log( 'Business Dashboard AJAX Delete Log Success: User meta updated successfully for user ' . $current_user_id . '. Update result: ' . print_r($update_result, true) );
+        }
+
+        error_log( 'Business Dashboard AJAX Delete Log Success: Log entry deleted for user ' . $current_user_id . '. Deleted entry: ' . print_r($deleted_log_entry, true) );
         wp_send_json_success( __( 'Sync log deleted successfully!', 'business-dashboard' ) );
     }
 
@@ -567,8 +603,8 @@ class Business_Dashboard_Public {
                             </div>
                             <h3 class="business-dashboard-grid-title"><?php echo esc_html( $_product->get_name() ); ?></h3>
                             <div class="business-dashboard-product-meta">
-                                <p class="business-dashboard-product-stock"><?php _e( 'Stock:', 'business-dashboard' ); ?> <?php echo esc_html( $_product->get_stock_quantity() ); ?></p>
-                                <p class="business-dashboard-product-last-synced"><?php _e( 'Last Synced:', 'business-dashboard' ); ?> <?php echo esc_html( $last_synced_timestamp ? date_i18n( get_option( 'date_format' ), strtotime( $last_synced_timestamp ) ) : __( 'N/A', 'business-dashboard' ) ); ?></p>
+                                <p class="business-dashboard-product-stock"><?php echo esc_html( 'Stock:', 'business-dashboard' ); ?> <?php echo esc_html( $_product->get_stock_quantity() !== null ? $_product->get_stock_quantity() : __( 'N/A', 'business-dashboard' ) ); ?></p>
+                                <p class="business-dashboard-product-last-synced"><?php echo esc_html( 'Last Synced:', 'business-dashboard' ); ?> <?php echo esc_html( ! empty( $last_synced_timestamp ) ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $last_synced_timestamp ) ) : __( 'N/A', 'business-dashboard' ) ); ?></p>
                                 <div class="business-dashboard-publish-switch">
                                     <label class="switch">
                                         <input type="checkbox" class="publish-toggle" data-product-id="<?php echo esc_attr( get_the_ID() ); ?>" <?php checked( $is_published, true ); ?>>
@@ -674,17 +710,17 @@ class Business_Dashboard_Public {
                     <?php foreach ( array_reverse( $logs ) as $index => $log_entry ) : // Display most recent first
                         $status = isset( $log_entry['status'] ) ? $log_entry['status'] : 'unknown';
                         $message = isset( $log_entry['message'] ) ? $log_entry['message'] : __( 'No message provided.', 'business-dashboard' );
-                        $timestamp = isset( $log_entry['timestamp'] ) ? $log_entry['timestamp'] : current_time( 'mysql' );
+                        $timestamp = isset( $log_entry['timestamp'] ) ? $log_entry['timestamp'] : ''; // Initialize as empty string
                         ?>
                         <tr>
-                            <td><?php echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $timestamp ) ) ); ?></td>
+                            <td><?php echo esc_html( ! empty( $timestamp ) ? date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $timestamp ) ) : __( 'N/A', 'business-dashboard' ) ); ?></td>
                             <td class="status-<?php echo esc_attr( $status ); ?>"><?php echo esc_html( ucfirst( $status ) ); ?></td>
                             <td><?php echo esc_html( $message ); ?></td>
                             <td class="actions">
                                 <?php if ( 'failed' === $status ) : ?>
-                                    <button class="retry-button button button-secondary" data-log-id="<?php echo count( $logs ) - 1 - $index; ?>"><?php _e( 'Retry', 'business-dashboard' ); ?></button>
+                                    <button class="retry-button button button-secondary" data-log-id="<?php echo esc_attr( $index ); ?>"><?php _e( 'Retry', 'business-dashboard' ); ?></button>
                                 <?php endif; ?>
-                                <button class="delete-button button button-secondary" data-log-id="<?php echo count( $logs ) - 1 - $index; ?>"><?php _e( 'Delete', 'business-dashboard' ); ?></button>
+                                <button class="delete-button button button-secondary" data-log-id="<?php echo esc_attr( $index ); ?>"><?php _e( 'Delete', 'business-dashboard' ); ?></button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -1222,6 +1258,8 @@ class Business_Dashboard_Public {
             return new WP_Error( 'woocommerce_not_active', __( 'WooCommerce is not active.', 'business-dashboard' ) );
         }
 
+        error_log( 'Business Dashboard Product Import: Processing product data for user ' . $user_id . ': ' . print_r($product_data, true) );
+
         $product_name = isset( $product_data['name'] ) ? sanitize_text_field( $product_data['name'] ) : (isset( $product_data['title'] ) ? sanitize_text_field( $product_data['title'] ) : '');
         $sku = isset( $product_data['sku'] ) ? sanitize_text_field( $product_data['sku'] ) : '';
         $price = isset( $product_data['price'] ) ? wc_format_decimal( $product_data['price'] ) : '';
@@ -1231,13 +1269,16 @@ class Business_Dashboard_Public {
 
         // Basic validation for essential product data
         if ( empty( $product_name ) ) {
-            return new WP_Error( 'product_name_missing', __( 'Product name is missing in the external data.', 'business-dashboard' ) );
+            error_log( 'Business Dashboard Product Import Error (User ' . $user_id . '): Product name is missing for product: ' . print_r($product_data, true) );
+            return new WP_Error( 'product_name_missing', sprintf( __( 'Product name is missing in the external data for product with SKU: %s.', 'business-dashboard' ), ( ! empty( $sku ) ? $sku : __( 'N/A', 'business-dashboard' ) ) ) );
         }
         if ( empty( $sku ) ) {
-            return new WP_Error( 'product_sku_missing', __( 'Product SKU is missing in the external data.', 'business-dashboard' ) );
+            error_log( 'Business Dashboard Product Import Error (User ' . $user_id . '): Product SKU is missing for product: ' . print_r($product_data, true) );
+            return new WP_Error( 'product_sku_missing', sprintf( __( 'Product SKU is missing in the external data for product: %s.', 'business-dashboard' ), ( ! empty( $product_name ) ? $product_name : __( 'N/A', 'business-dashboard' ) ) ) );
         }
         if ( empty( $price ) && empty( $regular_price ) ) {
-            return new WP_Error( 'product_price_missing', __( 'Product price is missing in the external data.', 'business-dashboard' ) );
+            error_log( 'Business Dashboard Product Import Error (User ' . $user_id . '): Product price is missing for product: ' . print_r($product_data, true) );
+            return new WP_Error( 'product_price_missing', sprintf( __( 'Product price is missing in the external data for product: %s (SKU: %s).', 'business-dashboard' ), ( ! empty( $product_name ) ? $product_name : __( 'N/A', 'business-dashboard' ) ), ( ! empty( $sku ) ? $sku : __( 'N/A', 'business-dashboard' ) ) ) );
         }
 
         // Check if product exists by SKU

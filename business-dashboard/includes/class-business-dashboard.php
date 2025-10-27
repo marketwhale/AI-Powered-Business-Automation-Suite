@@ -165,6 +165,10 @@ class Business_Dashboard {
         $this->loader->add_action( 'wp_ajax_nopriv_business_dashboard_manual_product_sync', $plugin_public, 'manual_product_sync' );
         $this->loader->add_action( 'wp_ajax_business_dashboard_toggle_product_publish_status', $plugin_public, 'ajax_toggle_product_publish_status' );
 
+        // AJAX for deleting sync logs
+        $this->loader->add_action( 'wp_ajax_business_dashboard_delete_sync_log', $plugin_public, 'ajax_delete_sync_log' );
+        // No nopriv for delete sync log as it requires login
+
         // AJAX for loading dashboard sections
         $this->loader->add_action( 'wp_ajax_business_dashboard_load_section', $plugin_public, 'load_dashboard_section' );
         $this->loader->add_action( 'wp_ajax_nopriv_business_dashboard_load_section', $plugin_public, 'load_dashboard_section' );

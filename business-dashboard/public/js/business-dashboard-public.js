@@ -144,10 +144,12 @@
                 $.ajax({
                     url: business_dashboard_public_vars.ajax_url,
                     type: 'POST',
+                    cache: false, // Disable caching for this AJAX request
                     data: {
                         action: 'business_dashboard_load_section',
                         section: section,
-                        nonce: business_dashboard_public_vars.dashboard_nonce
+                        nonce: business_dashboard_public_vars.dashboard_nonce,
+                        _t: new Date().getTime() // Cache-busting parameter
                     },
                     success: function(response) {
                         if (response.success) {
@@ -593,18 +595,32 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            alert('Sync log deleted successfully!');
-                            loadDashboardSection('product-sync'); // Reload section to show updated logs
+                            alert(response.data); // Display success message from backend
+                            // Remove the deleted row from the DOM
+                            $thisButton.closest('tr').remove();
+                            // If no logs are left, display the "No sync logs available" message
+                            if ($('.business-dashboard-sync-logs-list tbody tr').length === 0) {
+                                $('#sync-logs-display').html('<p>' + 'No sync logs available.' + '</p>');
+                            }
                         } else {
                             // Display the specific error message from the backend
-                            alert('Error deleting sync log: ' + response.data);
+                            var errorMessage = response.data;
+                            if (response.data && typeof response.data === 'string') { // Check if response.data is a string
+                                errorMessage = response.data;
+                            } else if (jqXHR.responseJSON && jqXHR.responseJSON.data) {
+                                errorMessage = jqXHR.responseJSON.data;
+                            }
+                            alert('Error deleting sync log: ' + errorMessage);
                         }
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         console.error('AJAX Error deleting sync log:', textStatus, errorThrown, jqXHR.responseText);
                         var errorMessage = 'An unexpected error occurred while deleting sync log.';
+                        // Prioritize a specific error message from the server if available
                         if (jqXHR.responseJSON && jqXHR.responseJSON.data) {
                             errorMessage = jqXHR.responseJSON.data;
+                        } else if (jqXHR.responseText) { // Fallback to raw responseText for non-JSON errors
+                            errorMessage = jqXHR.responseText;
                         }
                         alert(errorMessage);
                     },
@@ -700,7 +716,7 @@
             }
 
             function checkSlugAvailability(slug) {
-                if (slug.length < 3) {
+                if (!slug || typeof slug !== 'string' || slug.length < 3) { // Add check for slug being undefined, not a string, or too short
                     $availabilitySpan.empty();
                     return;
                 }
@@ -767,7 +783,7 @@
             }
 
             function checkSlugAvailability(slug) {
-                if (slug.length < 3) {
+                if (!slug || typeof slug !== 'string' || slug.length < 3) { // Add check for slug being undefined, not a string, or too short
                     $availabilitySpan.empty();
                     return;
                 }
