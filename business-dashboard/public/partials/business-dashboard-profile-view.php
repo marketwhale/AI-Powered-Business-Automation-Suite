@@ -69,20 +69,23 @@ if ( 'verified' === $verification_status ) {
 
     <div class="business-dashboard-tabs-wrap">
         <h2 class="nav-tab-wrapper">
-            <a href="?section=profile&tab=synced-products" class="nav-tab <?php echo ( ! isset( $_GET['tab'] ) || $_GET['tab'] === 'synced-products' ) ? 'nav-tab-active' : ''; ?>" data-tab="synced-products"><?php _e( 'Synced Products', 'business-dashboard' ); ?></a>
-            <a href="?section=profile&tab=product-gallery" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'product-gallery' ) ? 'nav-tab-active' : ''; ?>" data-tab="product-gallery"><?php _e( 'Product Gallery', 'business-dashboard' ); ?></a>
+            <a href="javascript:void(0);" class="nav-tab <?php echo ( ! isset( $_GET['tab'] ) || $_GET['tab'] === 'synced-products' ) ? 'nav-tab-active' : ''; ?>" data-tab="synced-products" data-parent-section="profile"><?php _e( 'Synced Products', 'business-dashboard' ); ?></a>
+            <a href="javascript:void(0);" class="nav-tab <?php echo ( isset( $_GET['tab'] ) && $_GET['tab'] === 'product-gallery' ) ? 'nav-tab-active' : ''; ?>" data-tab="product-gallery" data-parent-section="profile"><?php _e( 'Product Gallery', 'business-dashboard' ); ?></a>
         </h2>
 
         <div class="business-dashboard-tab-content">
-            <?php
-            $current_tab = isset( $_GET['tab'] ) ? $_GET['tab'] : 'synced-products';
-            if ( 'synced-products' === $current_tab ) {
-                // Assuming display_synced_products outputs the table directly
+            <div id="synced-products-tab-content" class="business-dashboard-sub-tab-content">
+                <?php
+                // Initial load of synced products
                 echo $this->display_synced_products( $current_user->ID );
-            } elseif ( 'product-gallery' === $current_tab ) {
+                ?>
+            </div>
+            <div id="product-gallery-tab-content" class="business-dashboard-sub-tab-content" style="display:none;">
+                <?php
+                // Initial load of product gallery
                 require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-product-gallery-grid.php';
-            }
-            ?>
+                ?>
+            </div>
         </div>
     </div>
 </div>

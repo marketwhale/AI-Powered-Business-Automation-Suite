@@ -412,9 +412,23 @@ class Business_Dashboard_Public {
         }
 
         $section = isset( $_POST['section'] ) ? sanitize_text_field( $_POST['section'] ) : 'profile';
+        $sub_tab = isset( $_POST['sub_tab'] ) ? sanitize_text_field( $_POST['sub_tab'] ) : '';
 
         ob_start();
-        $this->render_dashboard_section_content( $current_user->ID, $section );
+        if ( 'profile' === $section && ! empty( $sub_tab ) ) {
+            // Handle sub-tabs within the profile section
+            if ( 'synced-products' === $sub_tab ) {
+                echo $this->display_synced_products( $current_user->ID );
+            } elseif ( 'product-gallery' === $sub_tab ) {
+                require_once BUSINESS_DASHBOARD_PLUGIN_DIR . 'public/partials/business-dashboard-product-gallery-grid.php';
+            } else {
+                // Fallback for unknown sub-tab
+                $this->render_dashboard_section_content( $current_user->ID, $section );
+            }
+        } else {
+            // Handle main sections
+            $this->render_dashboard_section_content( $current_user->ID, $section );
+        }
         $content = ob_get_clean();
 
         wp_send_json_success( array( 'content' => $content ) );

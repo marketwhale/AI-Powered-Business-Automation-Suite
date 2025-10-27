@@ -207,6 +207,8 @@
         } else if (initialSection === 'product-sync') {
             initProductSyncTabs();
             initProductSyncForm();
+        } else if (initialSection === 'profile') {
+            initProfileViewTabs(); // Initialize tabs for the profile view
         }
 
         // Initialize business URL slug check for registration form
@@ -234,6 +236,31 @@
 
             // Initialize business URL slug availability check
             initBusinessUrlSlugCheck();
+        }
+
+        // Initialize tabs for the Business Profile View section
+        function initProfileViewTabs() {
+            $(document).off('click', '.business-dashboard-profile-view .nav-tab-wrapper .nav-tab').on('click', '.business-dashboard-profile-view .nav-tab-wrapper .nav-tab', function(e) {
+                e.preventDefault();
+                var $this = $(this);
+                var targetTab = $this.data('tab');
+                var parentSection = $this.data('parent-section'); // Should be 'profile'
+
+                $('.business-dashboard-profile-view .nav-tab-wrapper .nav-tab').removeClass('nav-tab-active');
+                $this.addClass('nav-tab-active');
+
+                // Hide all sub-tab content and show the target one
+                $('.business-dashboard-profile-view .business-dashboard-sub-tab-content').hide();
+                $('#' + targetTab + '-tab-content').show();
+
+                // Update URL hash for direct linking
+                var newHash = 'tab=' + targetTab;
+                history.replaceState(null, null, '#' + newHash);
+            });
+
+            // Set initial active tab for profile view
+            var initialProfileViewTab = new URLSearchParams(window.location.hash.substring(1)).get('tab') || 'synced-products';
+            $('.business-dashboard-profile-view .nav-tab-wrapper .nav-tab[data-tab="' + initialProfileViewTab + '"]').click();
         }
 
         // Handle profile settings form submission (excluding image uploads)
