@@ -512,12 +512,18 @@
                                 $submitButton.removeClass('glowing-success');
                             }, 2000);
                         } else {
+                            // Display the specific error message from the backend
                             $feedbackArea.addClass('business-dashboard-error').text(response.data);
                         }
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         console.error('AJAX Error syncing products:', textStatus, errorThrown, jqXHR.responseText);
-                        $feedbackArea.addClass('business-dashboard-error').text('An unexpected error occurred. Please try again.');
+                        // Attempt to parse a more specific error message if available
+                        var errorMessage = 'An unexpected error occurred. Please try again.';
+                        if (jqXHR.responseJSON && jqXHR.responseJSON.data) {
+                            errorMessage = jqXHR.responseJSON.data;
+                        }
+                        $feedbackArea.addClass('business-dashboard-error').text(errorMessage);
                     },
                     complete: function() {
                         $submitButton.text(originalButtonText).prop('disabled', false).removeClass('loading pulsing');
@@ -545,14 +551,19 @@
                     success: function(response) {
                         if (response.success) {
                             alert('Sync log retried successfully!');
-                            loadDashboardSection('product-sync');
+                            loadDashboardSection('product-sync'); // Reload section to show updated logs and products
                         } else {
+                            // Display the specific error message from the backend
                             alert('Error retrying sync log: ' + response.data);
                         }
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         console.error('AJAX Error retrying sync log:', textStatus, errorThrown, jqXHR.responseText);
-                        alert('An unexpected error occurred while retrying sync log.');
+                        var errorMessage = 'An unexpected error occurred while retrying sync log.';
+                        if (jqXHR.responseJSON && jqXHR.responseJSON.data) {
+                            errorMessage = jqXHR.responseJSON.data;
+                        }
+                        alert(errorMessage);
                     },
                     complete: function() {
                         $thisButton.text(originalButtonText).prop('disabled', false).removeClass('loading');
@@ -583,14 +594,19 @@
                     success: function(response) {
                         if (response.success) {
                             alert('Sync log deleted successfully!');
-                            loadDashboardSection('product-sync');
+                            loadDashboardSection('product-sync'); // Reload section to show updated logs
                         } else {
+                            // Display the specific error message from the backend
                             alert('Error deleting sync log: ' + response.data);
                         }
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         console.error('AJAX Error deleting sync log:', textStatus, errorThrown, jqXHR.responseText);
-                        alert('An unexpected error occurred while deleting sync log.');
+                        var errorMessage = 'An unexpected error occurred while deleting sync log.';
+                        if (jqXHR.responseJSON && jqXHR.responseJSON.data) {
+                            errorMessage = jqXHR.responseJSON.data;
+                        }
+                        alert(errorMessage);
                     },
                     complete: function() {
                         $thisButton.text(originalButtonText).prop('disabled', false).removeClass('loading');

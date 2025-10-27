@@ -1017,6 +1017,14 @@ class Business_Dashboard_Public {
             'message'   => '',
         );
 
+        // Validate sync URL
+        if ( empty( $sync_url ) || ! filter_var( $sync_url, FILTER_VALIDATE_URL ) ) {
+            $log_entry['message'] = __( 'Invalid or empty product sync URL provided.', 'business-dashboard' );
+            $this->add_sync_log( $user_id, $log_entry );
+            error_log( 'Business Dashboard Sync Error (User ' . $user_id . '): ' . $log_entry['message'] );
+            return new WP_Error( 'invalid_sync_url', $log_entry['message'] );
+        }
+
         // Determine if it's a WooCommerce REST API URL
         $is_woocommerce_api = ( strpos( $sync_url, '/wp-json/wc/v' ) !== false );
 
@@ -1034,9 +1042,18 @@ class Business_Dashboard_Public {
         $response = wp_remote_get( $sync_url, $request_args );
 
         if ( is_wp_error( $response ) ) {
-            $log_entry['message'] = __( 'Failed to fetch data from external source.', 'business-dashboard' ) . ' ' . $response->get_error_message();
+            $log_entry['message'] = __( 'Failed to fetch data from external source. Network error or unreachable host.', 'business-dashboard' ) . ' ' . $response->get_error_message();
             $this->add_sync_log( $user_id, $log_entry );
-            return new WP_Error( 'sync_error', $log_entry['message'] );
+            error_log( 'Business Dashboard Sync Error (User ' . $user_id . '): ' . $log_entry['message'] );
+            return new WP_Error( 'network_error', $log_entry['message'] );
+        }
+
+        $http_status = wp_remote_retrieve_response_code( $response );
+        if ( $http_status !== 200 ) {
+            $log_entry['message'] = sprintf( __( 'Failed to fetch data. HTTP Status: %d. Response: %s', 'business-dashboard' ), $http_status, wp_remote_retrieve_response_message( $response ) );
+            $this->add_sync_log( $user_id, $log_entry );
+            error_log( 'Business Dashboard Sync Error (User ' . $user_id . '): ' . $log_entry['message'] );
+            return new WP_Error( 'http_error', $log_entry['message'] );
         }
 
         $body = wp_remote_retrieve_body( $response );
@@ -1044,45 +1061,67 @@ class Business_Dashboard_Public {
 
         if ( 'json' === $data_source_type ) {
             $products_data = json_decode( $body, true );
-            if ( ! is_array( $products_data ) ) {
-                $log_entry['message'] = __( 'Invalid JSON data received.', 'business-dashboard' );
+            if ( json_last_error() !== JSON_ERROR_NONE ) {
+                $log_entry['message'] = __( 'Invalid JSON data received from external source.', 'business-dashboard' ) . ' ' . json_last_error_msg();
                 $this->add_sync_log( $user_id, $log_entry );
-                return new WP_Error( 'sync_error', $log_entry['message'] );
+                error_log( 'Business Dashboard Sync Error (User ' . $user_id . '): ' . $log_entry['message'] );
+                return new WP_Error( 'invalid_json', $log_entry['message'] );
+            }
+            if ( ! is_array( $products_data ) ) {
+                $log_entry['message'] = __( 'JSON data is not an array of products.', 'business-dashboard' );
+                $this->add_sync_log( $user_id, $log_entry );
+                error_log( 'Business Dashboard Sync Error (User ' . $user_id . '): ' . $log_entry['message'] );
+                return new WP_Error( 'json_not_array', $log_entry['message'] );
             }
         } elseif ( 'csv' === $data_source_type ) {
             $products_data = $this->parse_csv_data( $body );
             if ( is_wp_error( $products_data ) ) {
                 $log_entry['message'] = $products_data->get_error_message();
                 $this->add_sync_log( $user_id, $log_entry );
+                error_log( 'Business Dashboard Sync Error (User ' . $user_id . '): ' . $log_entry['message'] );
                 return $products_data;
             }
         } else {
-            $log_entry['message'] = __( 'Unsupported data source type.', 'business-dashboard' );
+            $log_entry['message'] = __( 'Unsupported data source type specified.', 'business-dashboard' );
             $this->add_sync_log( $user_id, $log_entry );
-            return new WP_Error( 'sync_error', $log_entry['message'] );
+            error_log( 'Business Dashboard Sync Error (User ' . $user_id . '): ' . $log_entry['message'] );
+            return new WP_Error( 'unsupported_data_type', $log_entry['message'] );
         }
 
         if ( empty( $products_data ) ) {
-            $log_entry['message'] = __( 'No product data found.', 'business-dashboard' );
+            $log_entry['message'] = __( 'No product data found in the external source.', 'business-dashboard' );
             $this->add_sync_log( $user_id, $log_entry );
-            return new WP_Error( 'sync_error', $log_entry['message'] );
+            error_log( 'Business Dashboard Sync Warning (User ' . $user_id . '): ' . $log_entry['message'] );
+            return new WP_Error( 'no_product_data', $log_entry['message'] );
         }
 
         // Process and import products
         $imported_count = 0;
+        $failed_imports = 0;
         foreach ( $products_data as $product_data ) {
             $result = $this->import_woocommerce_product( $user_id, $product_data );
             if ( ! is_wp_error( $result ) ) {
                 $imported_count++;
             } else {
-                error_log( 'Business Dashboard Product Import Error for user ' . $user_id . ': ' . $result->get_error_message() );
+                $failed_imports++;
+                error_log( 'Business Dashboard Product Import Error for user ' . $user_id . ' (SKU: ' . (isset($product_data['sku']) ? $product_data['sku'] : 'N/A') . '): ' . $result->get_error_message() );
             }
         }
 
-        $log_entry['status'] = 'success';
-        $log_entry['message'] = sprintf( __( '%d products synced successfully.', 'business-dashboard' ), $imported_count );
+        if ( $imported_count > 0 ) {
+            $log_entry['status'] = 'success';
+            $log_entry['message'] = sprintf( __( '%d products synced successfully. %d products failed to import.', 'business-dashboard' ), $imported_count, $failed_imports );
+        } else {
+            $log_entry['status'] = 'failed';
+            $log_entry['message'] = sprintf( __( 'No products were synced. %d products failed to import.', 'business-dashboard' ), $failed_imports );
+        }
+
         $this->add_sync_log( $user_id, $log_entry );
-        return true;
+        if ( $imported_count > 0 ) {
+            return true;
+        } else {
+            return new WP_Error( 'no_products_imported', $log_entry['message'] );
+        }
     }
 
     /**
@@ -1126,19 +1165,44 @@ class Business_Dashboard_Public {
      * @return   array|WP_Error     Array of products on success, WP_Error on failure.
      */
     private function parse_csv_data( $csv_string ) {
-        $lines = explode( "\n", $csv_string );
-        $header = str_getcsv( array_shift( $lines ) );
+        $lines = array_filter( array_map( 'trim', explode( "\n", $csv_string ) ) ); // Remove empty lines
+        if ( empty( $lines ) ) {
+            return new WP_Error( 'csv_empty', __( 'CSV data is empty or contains no valid lines.', 'business-dashboard' ) );
+        }
+
+        $header_line = array_shift( $lines );
+        $header = str_getcsv( $header_line );
+
+        if ( empty( $header ) ) {
+            return new WP_Error( 'csv_no_header', __( 'CSV data is missing a header row.', 'business-dashboard' ) );
+        }
+
         $products = array();
+        $line_num = 1; // Start from 1 for header, then increment for data rows
 
         foreach ( $lines as $line ) {
-            if ( empty( trim( $line ) ) ) continue;
+            $line_num++;
             $data = str_getcsv( $line );
+
+            // Skip empty lines that might have slipped through array_filter if they were just whitespace
+            if ( empty( array_filter( $data ) ) ) {
+                continue;
+            }
+
             if ( count( $header ) === count( $data ) ) {
                 $products[] = array_combine( $header, $data );
             } else {
-                error_log( 'Business Dashboard CSV Parse Error: Mismatched column count in line: ' . $line );
+                $error_message = sprintf( __( 'CSV Parse Error on line %d: Mismatched column count. Expected %d, got %d. Line content: %s', 'business-dashboard' ), $line_num, count( $header ), count( $data ), $line );
+                error_log( 'Business Dashboard CSV Parse Error: ' . $error_message );
+                // Instead of returning an error for the whole file, we can log and skip the problematic line
+                // return new WP_Error( 'csv_mismatched_columns', $error_message );
             }
         }
+
+        if ( empty( $products ) ) {
+            return new WP_Error( 'csv_no_products', __( 'No valid product data found in the CSV file after parsing.', 'business-dashboard' ) );
+        }
+
         return $products;
     }
 
@@ -1154,24 +1218,40 @@ class Business_Dashboard_Public {
             return new WP_Error( 'woocommerce_not_active', __( 'WooCommerce is not active.', 'business-dashboard' ) );
         }
 
+        if ( ! class_exists( 'WooCommerce' ) ) {
+            return new WP_Error( 'woocommerce_not_active', __( 'WooCommerce is not active.', 'business-dashboard' ) );
+        }
+
+        $product_name = isset( $product_data['name'] ) ? sanitize_text_field( $product_data['name'] ) : (isset( $product_data['title'] ) ? sanitize_text_field( $product_data['title'] ) : '');
         $sku = isset( $product_data['sku'] ) ? sanitize_text_field( $product_data['sku'] ) : '';
+        $price = isset( $product_data['price'] ) ? wc_format_decimal( $product_data['price'] ) : '';
+        $regular_price = isset( $product_data['regular_price'] ) ? wc_format_decimal( $product_data['regular_price'] ) : $price;
+        $sale_price = isset( $product_data['sale_price'] ) ? wc_format_decimal( $product_data['sale_price'] ) : '';
+        $stock_quantity = isset( $product_data['stock_quantity'] ) ? absint( $product_data['stock_quantity'] ) : 0;
+
+        // Basic validation for essential product data
+        if ( empty( $product_name ) ) {
+            return new WP_Error( 'product_name_missing', __( 'Product name is missing in the external data.', 'business-dashboard' ) );
+        }
         if ( empty( $sku ) ) {
-            error_log( 'Business Dashboard Product Sync Error: Product SKU is missing for user ' . $user_id );
-            return new WP_Error( 'product_sku_missing', __( 'Product SKU is missing.', 'business-dashboard' ) );
+            return new WP_Error( 'product_sku_missing', __( 'Product SKU is missing in the external data.', 'business-dashboard' ) );
+        }
+        if ( empty( $price ) && empty( $regular_price ) ) {
+            return new WP_Error( 'product_price_missing', __( 'Product price is missing in the external data.', 'business-dashboard' ) );
         }
 
         // Check if product exists by SKU
         $product_id = wc_get_product_id_by_sku( $sku );
         $product = $product_id ? wc_get_product( $product_id ) : new WC_Product();
 
-        $product->set_name( isset( $product_data['name'] ) ? sanitize_text_field( $product_data['name'] ) : (isset( $product_data['title'] ) ? sanitize_text_field( $product_data['title'] ) : '') );
+        $product->set_name( $product_name );
         $product->set_sku( $sku );
-        $product->set_price( isset( $product_data['price'] ) ? wc_format_decimal( $product_data['price'] ) : '' );
-        $product->set_regular_price( isset( $product_data['regular_price'] ) ? wc_format_decimal( $product_data['regular_price'] ) : (isset( $product_data['price'] ) ? wc_format_decimal( $product_data['price'] ) : '') );
-        $product->set_sale_price( isset( $product_data['sale_price'] ) ? wc_format_decimal( $product_data['sale_price'] ) : '' );
+        $product->set_price( $price );
+        $product->set_regular_price( $regular_price );
+        $product->set_sale_price( $sale_price );
         $product->set_description( isset( $product_data['description'] ) ? wp_kses_post( $product_data['description'] ) : '' );
         $product->set_short_description( isset( $product_data['short_description'] ) ? wp_kses_post( $product_data['short_description'] ) : '' );
-        $product->set_stock_quantity( isset( $product_data['stock_quantity'] ) ? absint( $product_data['stock_quantity'] ) : 0 );
+        $product->set_stock_quantity( $stock_quantity );
         $product->set_manage_stock( true ); // Always manage stock for synced products
         $product->set_status( 'publish' ); // Ensure products are published
 
@@ -1186,6 +1266,8 @@ class Business_Dashboard_Public {
                     $term = wp_insert_term( trim( $category_name ), 'product_cat' );
                     if ( ! is_wp_error( $term ) ) {
                         $term_ids[] = $term['term_id'];
+                    } else {
+                        error_log( 'Business Dashboard Product Import Error: Failed to create category "' . $category_name . '": ' . $term->get_error_message() );
                     }
                 } else {
                     $term_ids[] = $term->term_id;
@@ -1202,6 +1284,8 @@ class Business_Dashboard_Public {
                     $image_id = $this->upload_product_image( $image['src'] );
                     if ( $image_id ) {
                         $gallery_image_ids[] = $image_id;
+                    } else {
+                        error_log( 'Business Dashboard Product Import Error: Failed to upload image from URL: ' . $image['src'] );
                     }
                 }
             }
@@ -1213,6 +1297,8 @@ class Business_Dashboard_Public {
             $image_id = $this->upload_product_image( $product_data['image_url'] );
             if ( $image_id ) {
                 $product->set_image_id( $image_id );
+            } else {
+                error_log( 'Business Dashboard Product Import Error: Failed to upload image from URL: ' . $product_data['image_url'] );
             }
         }
 
