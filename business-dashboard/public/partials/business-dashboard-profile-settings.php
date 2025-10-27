@@ -135,6 +135,10 @@ $industries = array( 'Retail', 'Food & Beverage', 'Technology', 'Healthcare', 'E
                     <input type="number" name="established_year" id="established_year" value="<?php echo esc_attr( $established_year ); ?>" min="1900" max="<?php echo date('Y'); ?>" />
                 </div>
                 <div class="form-group">
+                    <label for="brand"><?php _e( 'Brand', 'business-dashboard' ); ?></label>
+                    <input type="text" name="brand" id="brand" value="<?php echo esc_attr( get_user_meta( $current_user->ID, 'brand', true ) ); ?>" placeholder="<?php _e( 'e.g., My Awesome Brand', 'business-dashboard' ); ?>" />
+                </div>
+                <div class="form-group">
                     <label for="business_url_slug"><?php _e( 'Public Business URL Slug', 'business-dashboard' ); ?></label>
                     <input type="text" name="business_url_slug" id="business_url_slug" value="<?php echo esc_attr( $business_url_slug ); ?>" placeholder="<?php _e( 'e.g., my-awesome-brand', 'business-dashboard' ); ?>" />
                     <p class="description">

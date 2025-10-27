@@ -757,6 +757,7 @@ class Business_Dashboard_Public {
             'linkedin_url'         => esc_url_raw( $_POST['linkedin_url'] ),
             'twitter_url'          => esc_url_raw( $_POST['twitter_url'] ),
             'business_url_slug'    => sanitize_title( $_POST['business_url_slug'] ), // Sanitize for URL slug
+            'brand'                => sanitize_text_field( $_POST['brand'] ), // New meta field
         );
 
         // Check for business_url_slug uniqueness before saving

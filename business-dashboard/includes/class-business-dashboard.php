@@ -336,6 +336,12 @@ class Business_Dashboard {
                     </td>
                 </tr>
                 <tr>
+                    <th><label for="brand"><?php _e( 'Brand', 'business-dashboard' ); ?></label></th>
+                    <td>
+                        <input type="text" name="brand" id="brand" value="<?php echo esc_attr( get_user_meta( $user->ID, 'brand', true ) ); ?>" class="regular-text" />
+                    </td>
+                </tr>
+                <tr>
                     <th><label for="certificate_upload"><?php _e( 'Certificate Upload URL', 'business-dashboard' ); ?></label></th>
                     <td>
                         <input type="url" name="certificate_upload" id="certificate_upload" value="<?php echo esc_attr( get_user_meta( $user->ID, 'certificate_upload', true ) ); ?>" class="regular-text" />
@@ -446,6 +452,7 @@ class Business_Dashboard {
             'tax_id',
             'certificate_upload',
             'business_url_slug', // New meta field
+            'brand', // New meta field
         );
 
         foreach ( $fields as $field ) {
